@@ -32,7 +32,7 @@ export type ExpansionOutput = z.infer<typeof ExpansionSchema>;
 const SYSTEM = `You help researchers search scholarly databases (OpenAlex) across languages.
 Given a research question, produce for each requested language:
 - "translation": a faithful natural-language translation of the question. For the question's own language, repeat the question unchanged.
-- "keywords": 2–5 core concepts as they would appear in titles and abstracts of scientific papers written in that language, separated by single spaces and ordered from most to least essential. Use the standard technical terminology of that language's literature. No boolean operators, quotes, or punctuation. For Chinese and Japanese, separate terms with spaces.
+- "keywords": 2–5 core concepts as they would appear in titles and abstracts of scientific papers written in that language, separated by single spaces and ordered from most to least essential. Use the standard technical terminology of that language's literature. No boolean operators, quotes, or punctuation. For Chinese and Japanese, separate terms with spaces and prefer short, common terms of 2–4 characters: split long compounds (write 海洋 生态 rather than 海洋生态系统), because the search index only matches whole terms.
 Do not add concepts that are not in the question. Do not answer the question.`;
 
 export function buildExpansionPrompt(query: string, source: QueryLanguage, targets: QueryLanguage[]): string {

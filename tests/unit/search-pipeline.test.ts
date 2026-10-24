@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { UpstreamError } from "@/lib/http";
 import { normalizeOpenAlexWork, type OpenAlexSearchParams, type SearchResult } from "@/lib/openalex";
 import { expandQuery, planFromExpansion, type ExpansionResult } from "@/lib/query-expansion";
-import { relaxedQuery, runSearch, SearchFailedError, type SearchDeps } from "@/lib/search";
+import { relaxedQueries, runSearch, SearchFailedError, type SearchDeps } from "@/lib/search";
 import { SearchRequestSchema, type Capabilities, type Paper } from "@/lib/types";
 import { work } from "../fixtures/openalex";
 
@@ -96,20 +96,39 @@ describe("runSearch", () => {
     expect(res.papers.map((x) => x.year)).toEqual([2018]);
   });
 
-  it("retries a sparse strict query once with a broader query", async () => {
-    const d = deps(async (params) =>
-      params.search.includes(" OR ") ? { papers: enPapers, total: 5 } : { papers: [enPapers[0]], total: 1 },
+  it("broadens a sparse query step by step and keeps the first query that finds enough", async () => {
+    const d = deps(async (params) => {
+      if (params.languages.includes("zh")) {
+        // Mirrors OpenAlex: long multi-term Chinese queries find nothing; the core term does.
+        return params.search === "微塑料" ? { papers: zhPapers.concat([p(30), p(31), p(32)]), total: 1093 } : { papers: [], total: 0 };
+      }
+      return { papers: enPapers, total: 5 };
+    });
+    const res = await runSearch(
+      request,
+      { ...d, expand: async () => ({ ...expansion, variants: [expansion.variants[0], { lang: "zh", kind: "translated", text: "微塑料", searchQuery: "微塑料 海洋 生态 影响" }] }) },
     );
-    const res = await runSearch(request, d);
-    const en = res.variants.find((v) => v.kind === "original")!;
-    expect(en.relaxed).toBe(true);
-    expect(en.searchQuery).toBe("drought OR rice");
+    const zh = res.variants.find((v) => v.lang === "zh")!;
+    expect(zh.relaxed).toBe(true);
+    expect(zh.searchQuery).toBe("微塑料");
+    expect(zh.hitCount).toBe(5);
+    const zhSearches = (d.searchOpenAlex as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => (c[0] as OpenAlexSearchParams))
+      .filter((c) => c.languages.includes("zh"))
+      .map((c) => c.search);
+    expect(zhSearches).toEqual(["微塑料 海洋 生态 影响", "微塑料 海洋", "微塑料"]);
   });
 
-  it("broadens by dropping the least essential term before resorting to OR", () => {
-    expect(relaxedQuery("干ばつ イネ 収量")).toBe("干ばつ イネ");
-    expect(relaxedQuery("drought rice")).toBe("drought OR rice");
-    expect(relaxedQuery("drought")).toBeNull();
+  it("does not broaden a query that already found enough papers", async () => {
+    const d = deps(async () => ({ papers: enPapers, total: 5 }));
+    await runSearch(request, d);
+    expect((d.searchOpenAlex as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(3);
+  });
+
+  it("builds the broadening ladder from the most essential terms", () => {
+    expect(relaxedQueries("干ばつ イネ 収量")).toEqual(["干ばつ イネ", "干ばつ"]);
+    expect(relaxedQueries("drought rice")).toEqual(["drought"]);
+    expect(relaxedQueries("drought")).toEqual([]);
   });
 
   it("falls back to keyword ranking and says so when semantic scoring is unavailable", async () => {

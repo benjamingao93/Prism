@@ -31,18 +31,21 @@ export class SearchFailedError extends Error {
   }
 }
 
-/** Minimum hits before a strict query is retried once with a broader one. */
+/** Minimum hits before a sparse query is broadened. */
 export const RELAX_THRESHOLD = 5;
 
 /**
- * Broaden a sparse AND query. Keywords are ordered most-essential first, so with three or more
- * terms we drop the last one and keep AND semantics (OR across all terms pulls in off-topic work);
- * with two terms the only option left is OR.
+ * Broader fallbacks for a sparse AND query, tried in order (at most two extra requests).
+ * Keywords are ordered most-essential first, so we keep the leading two terms, then only the
+ * first. This stays on-topic better than OR-ing every term, and the ranking step reorders the
+ * broader result set by relevance anyway.
  */
-export function relaxedQuery(searchQuery: string): string | null {
+export function relaxedQueries(searchQuery: string): string[] {
   const terms = searchQuery.split(/\s+/).filter(Boolean);
-  if (terms.length >= 3) return terms.slice(0, -1).join(" ");
-  return terms.length === 2 ? terms.join(" OR ") : null;
+  const ladder = [terms.slice(0, 2), terms.slice(0, 1)]
+    .filter((t) => t.length && t.length < terms.length)
+    .map((t) => t.join(" "));
+  return [...new Set(ladder)];
 }
 
 function describeError(err: unknown): string {
@@ -92,17 +95,17 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
       const base = { languages, yearFrom: req.yearFrom, yearTo: req.yearTo, perPage: req.perVariant };
       try {
         let result = await deps.searchOpenAlex({ ...base, search: variant.searchQuery });
-        const relaxed = result.papers.length < RELAX_THRESHOLD ? relaxedQuery(variant.searchQuery) : null;
-        if (relaxed) {
+        for (const broader of relaxedQueries(variant.searchQuery)) {
+          if (result.papers.length >= RELAX_THRESHOLD) break;
           try {
-            const second = await deps.searchOpenAlex({ ...base, search: relaxed });
-            if (second.papers.length > result.papers.length) {
-              result = second;
+            const next = await deps.searchOpenAlex({ ...base, search: broader });
+            if (next.papers.length > result.papers.length) {
+              result = next;
               variant.relaxed = true;
-              variant.searchQuery = relaxed;
+              variant.searchQuery = broader;
             }
           } catch {
-            // Keep the strict result.
+            break; // Keep the best result so far.
           }
         }
         variant.hitCount = result.papers.length;

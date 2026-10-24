@@ -29,12 +29,12 @@ On first start the server downloads the multilingual embedding model (~120 MB) i
 
 Each search makes up to 5 OpenAlex keyword searches, one per language. Source responses are cached in memory for 24 hours.
 
-Both LLM tasks default to `gemini-3.8-flash` (Google Gemini API, structured JSON output). Override them with `LLM_MODEL_FAST` / `LLM_MODEL_SUMMARY`.
+Both LLM tasks default to `gemini-3.8-flash` (Google Gemini API, structured JSON output). Override them with `LLM_MODEL_FAST` / `LLM_MODEL_SUMMARY`. If a model is overloaded, rate limited or times out, the next model in `LLM_FALLBACK_MODELS` (default `gemini-3.6-flash,gemini-3.5-flash-lite`) is tried, and translations and summaries report which model produced them.
 
 ## How it works
 
 1. **Expand:** Gemini turns the question into 2–5 keyword concepts per language, ordered by importance. The original query is always kept. (`lib/query-expansion.ts`)
-2. **Retrieve:** one OpenAlex `search.title_and_abstract` request per variant. Translated variants are restricted to their own `language:` tag. Year and language filters are applied server-side. A sparse query (fewer than 5 hits) is retried once without its least essential term. (`lib/openalex.ts`, `lib/search.ts`)
+2. **Retrieve:** one OpenAlex `search.title_and_abstract` request per variant. Translated variants are restricted to their own `language:` tag. Year and language filters are applied server-side. A sparse query (fewer than 5 hits) is broadened to its two most essential terms, then to the core term (at most two extra requests). (`lib/openalex.ts`, `lib/search.ts`)
 3. **Merge:** papers are deduplicated by DOI, then OpenAlex ID, then exact normalized title plus year. Records with conflicting DOIs are never merged. Per-variant provenance is kept. (`lib/deduplication.ts`)
 4. **Score:**
    - Cosine similarity between the original question and each paper's title + abstract, embedded with `paraphrase-multilingual-MiniLM-L12-v2` via Transformers.js. (`lib/embeddings.ts`)

@@ -79,6 +79,19 @@ describe("mergePapers", () => {
     expect(mergePapers([[a], [b]])).toHaveLength(2);
   });
 
+  it("merges identical CJK titles that are shorter than the Latin threshold", () => {
+    const title = "微塑料吸附水环境中重金属的研究进展"; // 17 characters
+    const a = paper(11, { doi: null, title, authors: ["张浩", "刘海成"] });
+    const b = paper(12, { doi: null, title, authors: ["张浩", "刘海成"], openalexId: "https://openalex.org/W12", id: "https://openalex.org/W12" });
+    expect(mergePapers([[a], [b]])).toHaveLength(1);
+  });
+
+  it("does not merge same-title records whose first authors differ", () => {
+    const a = paper(13, { doi: null, authors: ["Author One"] });
+    const b = paper(14, { doi: null, title: a.title, authors: ["Someone Else"], openalexId: "https://openalex.org/W14", id: "https://openalex.org/W14" });
+    expect(mergePapers([[a], [b]])).toHaveLength(2);
+  });
+
   it("normalizes titles across width and punctuation", () => {
     expect(normalizeTitle("Ｒｉｃｅ — Drought: A Study!")).toBe("rice drought a study");
   });

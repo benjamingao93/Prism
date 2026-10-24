@@ -2,7 +2,7 @@ import "server-only";
 import { globalCache } from "./cache";
 import { searchCrossref, type CrossrefSearchParams } from "./crossref";
 import { embeddingModelName, embeddingStatus, semanticScores } from "./embeddings";
-import { env } from "./env";
+import { env, modelChain } from "./env";
 import { llmConfigured, structuredCall } from "./llm";
 import { searchOpenAlex, type OpenAlexSearchParams, type SearchResult } from "./openalex";
 import { expandQuery, ExpansionSchema } from "./query-expansion";
@@ -42,8 +42,17 @@ export function searchDeps(): SearchDeps {
       expandQuery(query, source, targets, {
         model: e.LLM_MODEL_FAST,
         callLlm: llmConfigured()
-          ? (system, prompt) =>
-              structuredCall(ExpansionSchema, { model: e.LLM_MODEL_FAST, system, prompt, maxTokens: 2000, thinking: "low", timeoutMs: 20_000 })
+          ? async (system, prompt) =>
+              (
+                await structuredCall(ExpansionSchema, {
+                  models: modelChain(e.LLM_MODEL_FAST),
+                  system,
+                  prompt,
+                  maxTokens: 2000,
+                  thinking: "low",
+                  timeoutMs: 12_000,
+                })
+              ).data
           : null,
       }),
     searchOpenAlex: (params: OpenAlexSearchParams) =>
@@ -59,16 +68,21 @@ export function searchDeps(): SearchDeps {
   };
 }
 
-export function translate(req: TranslateRequest) {
+/** Translate items; `model` is the model that produced the translations (null if none were needed). */
+export async function translate(req: TranslateRequest) {
   const e = env();
-  return translateItems(req, (system, prompt) =>
-    structuredCall(TranslationSchema, {
-      model: e.LLM_MODEL_FAST,
+  let model: string | null = null;
+  const items = await translateItems(req, async (system, prompt) => {
+    const result = await structuredCall(TranslationSchema, {
+      models: modelChain(e.LLM_MODEL_FAST),
       system,
       prompt,
       maxTokens: 16_000,
-      thinking: "minimal",
-      timeoutMs: 60_000,
-    }),
-  );
+      thinking: "low",
+      timeoutMs: 30_000,
+    });
+    model = result.model;
+    return result.data;
+  });
+  return { items, model };
 }

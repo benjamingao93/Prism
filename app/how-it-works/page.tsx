@@ -54,7 +54,7 @@ export default function HowItWorks() {
           <p>
             Each variant becomes one OpenAlex title-and-abstract search. A translated query is restricted to papers whose OpenAlex
             language tag matches it, so the Chinese query looks for Chinese-language papers. Year and publication-language filters are
-            sent to the API. If a strict query returns fewer than five papers, it is retried once with its least essential term removed.
+            sent to the API. If a query returns fewer than five papers, it is broadened step by step to its two most essential terms, then to the single core term. Ranking then reorders the broader set by relevance.
           </p>
           <p>
             Responses are cached for 24 hours. Publication language comes from OpenAlex metadata, which is itself detected

@@ -16,6 +16,8 @@ const EnvSchema = z.object({
   GEMINI_API_KEY: optionalString,
   LLM_MODEL_FAST: z.string().default("gemini-3.8-flash"),
   LLM_MODEL_SUMMARY: z.string().default("gemini-3.8-flash"),
+  /** Comma-separated models tried in order when the primary is overloaded or unreachable. */
+  LLM_FALLBACK_MODELS: z.string().default("gemini-3.6-flash,gemini-3.5-flash-lite"),
   OPENALEX_API_KEY: optionalString,
   OPENALEX_MAILTO: optionalString,
   CROSSREF_ENABLED: bool(false),
@@ -26,6 +28,15 @@ const EnvSchema = z.object({
 });
 
 export type Env = z.infer<typeof EnvSchema>;
+
+/** Primary model followed by the configured fallbacks, without duplicates. */
+export function modelChain(primary: string): string[] {
+  const fallbacks = env()
+    .LLM_FALLBACK_MODELS.split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  return [...new Set([primary, ...fallbacks])];
+}
 
 let cached: Env | null = null;
 

@@ -1,3 +1,4 @@
+import { cjkRatio } from "./text";
 import type { Paper } from "./types";
 
 /** Aggressive normalization used only for exact-equality title matching. */
@@ -14,9 +15,17 @@ export function normalizeTitle(title: string | null): string | null {
 
 function titleKey(p: Paper): string | null {
   const t = normalizeTitle(p.title);
-  // Conservative: long titles only, and year must match, to avoid merging distinct short-titled works.
-  if (!t || t.length < 20 || p.year == null) return null;
+  // Conservative: specific titles only, and year must match, to avoid merging distinct short-titled works.
+  // CJK titles carry far more information per character, so they qualify at a shorter length.
+  const minLength = cjkRatio(t ?? "") > 0.5 ? 8 : 20;
+  if (!t || t.length < minLength || p.year == null) return null;
   return `${p.year}|${t}`;
+}
+
+/** Title-only matches must not contradict the author lists, when both records have one. */
+function sameFirstAuthor(a: Paper, b: Paper): boolean {
+  if (!a.authors.length || !b.authors.length) return true;
+  return normalizeTitle(a.authors[0]) === normalizeTitle(b.authors[0]);
 }
 
 /** Combine two records of the same work. First non-null value wins; provenance is unioned. */
@@ -63,10 +72,11 @@ export function mergePapers(lists: Paper[][]): Paper[] {
         retrievedBy: [...original.retrievedBy],
       };
       const tKey = titleKey(p);
+      const titleMatch = tKey ? byTitle.get(tKey) : undefined;
       const existing =
         (p.doi && byDoi.get(p.doi)) ||
         (p.openalexId && byOpenAlex.get(p.openalexId)) ||
-        (tKey && byTitle.get(tKey)) ||
+        (titleMatch && sameFirstAuthor(titleMatch, p) ? titleMatch : null) ||
         null;
 
       // Two records with different DOIs are different works, even if titles match.

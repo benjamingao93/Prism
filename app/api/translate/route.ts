@@ -17,8 +17,8 @@ export async function POST(request: Request) {
   if ("response" in body) return body.response;
 
   try {
-    const items = await translate(body.data);
-    const response: TranslateResponse = { targetLang: body.data.targetLang, model: env().LLM_MODEL_FAST, items };
+    const { items, model } = await translate(body.data);
+    const response: TranslateResponse = { targetLang: body.data.targetLang, model: model ?? env().LLM_MODEL_FAST, items };
     return Response.json(response, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     return llmErrorResponse(err);
