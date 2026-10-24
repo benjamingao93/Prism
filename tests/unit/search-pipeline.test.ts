@@ -3,6 +3,7 @@ import { UpstreamError } from "@/lib/http";
 import { normalizeOpenAlexWork, type OpenAlexSearchParams, type SearchResult } from "@/lib/openalex";
 import { expandQuery, planFromExpansion, type ExpansionResult } from "@/lib/query-expansion";
 import { relaxedQueries, runSearch, SearchFailedError, type SearchDeps } from "@/lib/search";
+import { scorePapers, sortByMode } from "@/lib/ranking";
 import { SearchRequestSchema, type Capabilities, type Paper } from "@/lib/types";
 import { work } from "../fixtures/openalex";
 
@@ -36,7 +37,7 @@ function deps(search: (params: OpenAlexSearchParams) => Promise<SearchResult>, o
   };
 }
 
-const request = SearchRequestSchema.parse({ query: "How does drought affect rice?", perVariant: 10 });
+const request = SearchRequestSchema.parse({ query: "How does drought affect rice?", depth: 10 });
 
 function byLanguage(params: OpenAlexSearchParams): Promise<SearchResult> {
   if (params.languages.includes("zh")) return Promise.resolve({ papers: zhPapers, total: 2 });
@@ -63,6 +64,67 @@ describe("runSearch", () => {
     expect(zhOnly.retrievedBy).toEqual([{ variantId: "openalex:zh:1", rank: 2 }]);
     expect(zhOnly.explanations.some((e) => e.kind === "translated")).toBe(true);
     expect(zhOnly.explanations.some((e) => e.kind === "title-only")).toBe(true);
+  });
+
+  it("requests `depth` candidates per language and reports the candidate pool size", async () => {
+    const d = deps(byLanguage);
+    const res = await runSearch(request, d);
+    const calls = (d.searchOpenAlex as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0] as OpenAlexSearchParams);
+    expect(calls.every((c) => c.perPage === 10)).toBe(true);
+    expect(res.candidateCount).toBe(6);
+    expect(res.filters).toMatchObject({ limit: 100, depth: 10 });
+  });
+
+  it("returns the top N across all languages, with no per-language quota", async () => {
+    // 5 English candidates and 10 Chinese ones; the Chinese ones are more relevant here.
+    const zhMany = Array.from({ length: 10 }, (_, i) => p(40 + i, { language: "zh", title: `干旱 水稻 产量 研究 ${i}` }));
+    const d = deps(
+      (params) =>
+        Promise.resolve(params.languages.includes("zh") ? { papers: zhMany, total: 10 } : params.languages.length ? { papers: [], total: 0 } : { papers: enPapers, total: 5 }),
+      { semantic: async (_q, papers) => ({ scores: new Map(papers.map((x) => [x.id, x.language === "zh" ? 0.9 : 0.2])), notice: null }) },
+    );
+    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 8, depth: 10 }), d);
+    const top = sortByMode(res.papers, res.effectiveMode).slice(0, res.filters.limit);
+    expect(top).toHaveLength(8);
+    expect(top.every((x) => x.language === "zh")).toBe(true);
+    expect(res.candidateCount).toBe(15);
+  });
+
+  it("includes each mode's true top N so switching modes client-side is exact", async () => {
+    // 12 English candidates; semantic and keyword disagree about which are best.
+    const many = Array.from({ length: 12 }, (_, i) =>
+      p(60 + i, { title: i % 2 ? `drought rice drought rice yield ${i}` : `unrelated topic ${i}`, abstract: null }),
+    );
+    let pool: Paper[] = [];
+    let scores = new Map<string, number>();
+    const d = deps(async (params) => (params.languages.length ? { papers: [], total: 0 } : { papers: many, total: 12 }), {
+      semantic: async (_q, papers) => {
+        pool = papers;
+        // Semantic prefers the "unrelated" titles, so its top 5 differs from BM25's.
+        scores = new Map(papers.map((x, i) => [x.id, x.title!.startsWith("unrelated") ? 0.9 - i * 0.01 : 0.1]));
+        return { scores, notice: null };
+      },
+    });
+    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 5, depth: 20 }), d);
+    const full = scorePapers({ papers: pool, variants: res.variants, semantic: scores });
+    const returned = new Set(res.papers.map((x) => x.id));
+    for (const mode of ["semantic", "keyword", "hybrid"] as const) {
+      const expectedTop = sortByMode(full, mode).slice(0, 5).map((x) => x.id);
+      expect(expectedTop.every((id) => returned.has(id))).toBe(true);
+      expect(sortByMode(res.papers, mode).slice(0, 5).map((x) => x.id)).toEqual(expectedTop);
+    }
+  });
+
+  it("passes the original question and every translation to semantic scoring", async () => {
+    let received: string[] = [];
+    const d = deps(byLanguage, {
+      semantic: async (texts, papers) => {
+        received = texts;
+        return { scores: new Map(papers.map((x) => [x.id, 0.5])), notice: null };
+      },
+    });
+    await runSearch(request, d);
+    expect(received).toEqual(["drought rice", "干旱 水稻", "sequía arroz"]);
   });
 
   it("survives one failed variant and reports it", async () => {

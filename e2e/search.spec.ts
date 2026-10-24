@@ -42,8 +42,9 @@ const response: SearchResponse = {
   requestedMode: "hybrid",
   effectiveMode: "hybrid",
   availableModes: ["hybrid", "semantic", "keyword"],
-  filters: { publicationLanguages: [], yearFrom: null, yearTo: null, perVariant: 25 },
+  filters: { publicationLanguages: [], yearFrom: null, yearTo: null, limit: 100, depth: 40 },
   variants,
+  candidateCount: 3,
   // Keyword favors Alpha; semantic favors Gamma (Chinese).
   papers: [
     paper("A", "TEST Alpha keyword-heavy paper", "en", 0.3, 1, "openalex:en:0"),
@@ -81,8 +82,8 @@ test("search, switch ranking modes, and filter by language", async ({ page }) =>
   await page.getByLabel("Research question").press("Enter");
 
   await expect(page.getByTestId("paper-card")).toHaveCount(3);
-  expect(lastBody).toMatchObject({ query: "How does drought affect rice?", queryLanguage: "en", mode: "hybrid" });
-  await expect(page.getByText("3 papers retrieved from OpenAlex", { exact: false })).toBeVisible();
+  expect(lastBody).toMatchObject({ query: "How does drought affect rice?", queryLanguage: "en", mode: "hybrid", limit: 100, depth: 40 });
+  await expect(page.getByText("of 3 candidates from OpenAlex", { exact: false })).toBeVisible();
 
   // Hybrid order: C (0.66) > B (0.57) > A (0.51)
   expect((await titles(page))[0]).toContain("Gamma");

@@ -10,6 +10,7 @@ interface Props {
   mode: RankingMode;
   onModeChange: (m: RankingMode) => void;
   shownCount: number;
+  topCount: number;
   refine: string[];
   minScore: number;
   onClearRefine: () => void;
@@ -19,7 +20,7 @@ function Chip({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex items-center gap-1 rounded-md border bg-surface px-2 py-0.5 text-xs text-secondary-foreground">{children}</span>;
 }
 
-export function ResultsHeader({ response, mode, onModeChange, shownCount, refine, minScore, onClearRefine }: Props) {
+export function ResultsHeader({ response, mode, onModeChange, shownCount, topCount, refine, minScore, onClearRefine }: Props) {
   const f = response.filters;
   const sources = [...new Set(response.variants.filter((v) => !v.error && !v.skipped).map((v) => v.source))];
   const translatedCount = response.variants.filter((v) => v.kind === "translated" && !v.skipped && !v.error).length;
@@ -34,10 +35,10 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, refine
             {response.query}
           </h2>
           <p className="tabular mt-1 text-sm text-muted-foreground" aria-live="polite">
-            <span className="font-medium text-foreground">{response.papers.length}</span> papers retrieved from{" "}
-            {sources.map((s) => (s === "openalex" ? "OpenAlex" : "Crossref")).join(" and ") || "no sources"}
-            {translatedCount > 0 && <> using your query and {translatedCount} translated variants</>}
-            {shownCount !== response.papers.length && <> · {shownCount} shown</>} ·{" "}
+            Top <span className="font-medium text-foreground">{topCount}</span> of {response.candidateCount} candidates from{" "}
+            {sources.map((s) => (s === "openalex" ? "OpenAlex" : "Crossref")).join(" and ") || "no sources"}, searched with your query
+            {translatedCount > 0 && <> and {translatedCount} translations</>}
+            {shownCount !== topCount && <> · {shownCount} shown</>} ·{" "}
             <span className="text-muted-foreground/80">{(response.tookMs / 1000).toFixed(1)}s</span>
           </p>
         </div>
@@ -60,7 +61,8 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, refine
           {f.publicationLanguages.length ? `Published in: ${f.publicationLanguages.map((l) => languageName(l)).join(", ")}` : "All publication languages"}
         </Chip>
         <Chip>{f.yearFrom || f.yearTo ? `Years ${f.yearFrom ?? "…"}–${f.yearTo ?? "…"}` : "Any year"}</Chip>
-        <Chip>{f.perVariant} per query</Chip>
+        <Chip>Top {f.limit} overall</Chip>
+        <Chip>{f.depth} candidates per language</Chip>
         {minScore > 0 && <Chip>Min score {minScore.toFixed(2)}</Chip>}
         {refine.length > 0 && (
           <button
@@ -73,8 +75,9 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, refine
         )}
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Scores compare papers within this result set; they are not judgments of scientific quality. This is a sample of
-        OpenAlex records, not an exhaustive search.
+        Results are the most relevant candidates across all languages — no language has a fixed quota. Scores compare papers
+        within this candidate pool and are not judgments of scientific quality. This is a sample of OpenAlex records, not an
+        exhaustive search.
       </p>
     </div>
   );

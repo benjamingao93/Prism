@@ -5,7 +5,7 @@ import { UpstreamError } from "./http";
 import { languageName } from "./languages";
 import type { OpenAlexSearchParams, SearchResult } from "./openalex";
 import type { ExpansionResult } from "./query-expansion";
-import { availableModes, HYBRID_WEIGHTS, resolveMode, scorePapers, sortByMode } from "./ranking";
+import { availableModes, HYBRID_WEIGHTS, resolveMode, scorePapers, selectTopResults } from "./ranking";
 import type { Capabilities, Paper, QueryLanguage, QueryVariant, SearchRequest, SearchResponse } from "./types";
 import { QUERY_LANGUAGES } from "./types";
 
@@ -16,8 +16,11 @@ export interface SearchDeps {
   expand: (query: string, source: QueryLanguage, targets: QueryLanguage[]) => Promise<ExpansionResult>;
   searchOpenAlex: SearchOpenAlexFn;
   searchCrossref: SearchCrossrefFn | null;
-  /** Cosine similarity per paper id, or null when semantic ranking is unavailable (with reason). */
-  semantic: (query: string, papers: Paper[]) => Promise<{ scores: Map<string, number> | null; notice: string | null }>;
+  /**
+   * Cosine similarity per paper id against the question (given as the original text plus its
+   * translations), or null when semantic ranking is unavailable (with reason).
+   */
+  semantic: (queryTexts: string[], papers: Paper[]) => Promise<{ scores: Map<string, number> | null; notice: string | null }>;
   capabilities: () => Capabilities;
 }
 
@@ -30,6 +33,9 @@ export class SearchFailedError extends Error {
     this.name = "SearchFailedError";
   }
 }
+
+/** Size of the top-k lists in the original-language vs multilingual comparison. */
+export const COMPARISON_K = 10;
 
 /** Minimum hits before a sparse query is broadened. */
 export const RELAX_THRESHOLD = 5;
@@ -92,7 +98,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
       if (variant.skipped) return [];
       // Original query: user's publication-language filter. Translated query: its own language.
       const languages = variant.kind === "original" ? pubLangs : [variant.lang];
-      const base = { languages, yearFrom: req.yearFrom, yearTo: req.yearTo, perPage: req.perVariant };
+      const base = { languages, yearFrom: req.yearFrom, yearTo: req.yearTo, perPage: req.depth };
       try {
         let result = await deps.searchOpenAlex({ ...base, search: variant.searchQuery });
         for (const broader of relaxedQueries(variant.searchQuery)) {
@@ -140,7 +146,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
         query: req.query,
         yearFrom: req.yearFrom,
         yearTo: req.yearTo,
-        rows: req.perVariant,
+        rows: req.depth,
       });
       crossrefVariant.hitCount = result.papers.length;
       crossrefVariant.totalAvailable = result.total;
@@ -178,7 +184,10 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
   });
 
   // 5. Score.
-  const semantic = merged.length ? await deps.semantic(req.query, merged) : { scores: null, notice: null };
+  // The question's meaning is represented by the original plus every translation, so semantic
+  // scores don't hinge on how well the embedding model handles any single language.
+  const queryTexts = [...new Set(variants.filter((v) => v.source === "openalex").map((v) => v.text))];
+  const semantic = merged.length ? await deps.semantic(queryTexts, merged) : { scores: null, notice: null };
   if (semantic.notice) notices.push(semantic.notice);
   const ranked = scorePapers({ papers: merged, variants, semantic: semantic.scores });
   const modes = availableModes(ranked, semantic.scores != null);
@@ -190,9 +199,13 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
     requestedMode: req.mode,
     effectiveMode,
     availableModes: modes,
-    filters: { publicationLanguages: pubLangs, yearFrom: req.yearFrom, yearTo: req.yearTo, perVariant: req.perVariant },
+    filters: { publicationLanguages: pubLangs, yearFrom: req.yearFrom, yearTo: req.yearTo, limit: req.limit, depth: req.depth },
     variants,
-    papers: sortByMode(ranked, effectiveMode),
+    candidateCount: ranked.length,
+    papers: selectTopResults(ranked, modes, effectiveMode, req.limit, {
+      variantId: variants[0].id,
+      k: COMPARISON_K,
+    }),
     capabilities: deps.capabilities(),
     notices,
     weights: { ...HYBRID_WEIGHTS },

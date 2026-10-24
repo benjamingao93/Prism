@@ -48,9 +48,10 @@ export function searchDeps(): SearchDeps {
                   models: modelChain(e.LLM_MODEL_FAST),
                   system,
                   prompt,
-                  maxTokens: 2000,
+                  // Thinking tokens count toward the output budget; 15 languages need headroom.
+                  maxTokens: 8000,
                   thinking: "low",
-                  timeoutMs: 12_000,
+                  timeoutMs: 20_000,
                 })
               ).data
           : null,
@@ -63,7 +64,7 @@ export function searchDeps(): SearchDeps {
       ? (params: CrossrefSearchParams) =>
           cached("crossref", params, () => searchCrossref(params, e.CROSSREF_MAILTO ?? e.OPENALEX_MAILTO))
       : null,
-    semantic: (query, papers) => semanticScores(query, papers),
+    semantic: (queryTexts, papers) => semanticScores(queryTexts, papers),
     capabilities,
   };
 }

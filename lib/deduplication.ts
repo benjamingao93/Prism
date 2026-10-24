@@ -22,10 +22,16 @@ function titleKey(p: Paper): string | null {
   return `${p.year}|${t}`;
 }
 
-/** Title-only matches must not contradict the author lists, when both records have one. */
+/**
+ * Title-only matches must not contradict the author lists, when both records have one.
+ * Names written in different scripts (e.g. 磯辺 篤彦 vs. Atsuhiko Isobe) can't be compared, so
+ * they don't block a match; the exact title and year still have to agree.
+ */
 function sameFirstAuthor(a: Paper, b: Paper): boolean {
   if (!a.authors.length || !b.authors.length) return true;
-  return normalizeTitle(a.authors[0]) === normalizeTitle(b.authors[0]);
+  const [x, y] = [a.authors[0], b.authors[0]];
+  if (cjkRatio(x) > 0.5 !== cjkRatio(y) > 0.5) return true;
+  return normalizeTitle(x) === normalizeTitle(y);
 }
 
 /** Combine two records of the same work. First non-null value wins; provenance is unioned. */

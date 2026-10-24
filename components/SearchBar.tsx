@@ -40,6 +40,7 @@ export function SearchBar({ value, onChange, onSubmit, loading, languageLabel, c
       <input
         id="search-input"
         type="search"
+        dir="auto"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="How does drought stress affect rice crop yields?"

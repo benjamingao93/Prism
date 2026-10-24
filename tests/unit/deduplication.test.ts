@@ -92,6 +92,13 @@ describe("mergePapers", () => {
     expect(mergePapers([[a], [b]])).toHaveLength(2);
   });
 
+  it("does not let author names in different scripts block a title match", () => {
+    const title = "マイクロプラスチックによる海洋汚染の現状と今後の課題";
+    const a = paper(15, { doi: null, title, authors: ["篤彦 磯辺"] });
+    const b = paper(16, { doi: null, title, authors: ["Atsuhiko Isobe"], openalexId: "https://openalex.org/W16", id: "https://openalex.org/W16" });
+    expect(mergePapers([[a], [b]])).toHaveLength(1);
+  });
+
   it("normalizes titles across width and punctuation", () => {
     expect(normalizeTitle("Ｒｉｃｅ — Drought: A Study!")).toBe("rice drought a study");
   });

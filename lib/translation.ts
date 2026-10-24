@@ -19,12 +19,14 @@ export function detectTextLanguage(text: string): string | null {
   return guess || null;
 }
 
+const LATIN_SCRIPT = new Set<string>(["en", "es", "pt", "fr", "de", "it", "id", "tr", "pl"]);
+
 /** Text is treated as already in the target language only when detection is confident enough. */
 export function isAlreadyIn(text: string, target: QueryLanguage): boolean {
   const detected = detectTextLanguage(text);
   if (detected !== target) return false;
-  // Short Latin-script titles are easy to misdetect between en/es/pt; require more evidence.
-  if ((target === "en" || target === "es" || target === "pt") && text.length < 25) return false;
+  // Short Latin-script titles are easy to misdetect between related languages; require more evidence.
+  if (LATIN_SCRIPT.has(target) && text.length < 25) return false;
   return true;
 }
 

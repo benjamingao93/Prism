@@ -15,7 +15,7 @@ export const MODE_DESCRIPTIONS: Record<RankingMode, string> = {
   hybrid:
     "70% semantic similarity + 30% keyword (BM25) score, each min-max normalized within this result set. The weights are tunable starting values, not validated constants.",
   semantic:
-    "Cosine similarity between multilingual embeddings of your original question and each paper's title and abstract (paraphrase-multilingual-MiniLM-L12-v2). Comparable across languages, though not perfectly language-neutral.",
+    "Cosine similarity between multilingual embeddings of your question and each paper's title and abstract (paraphrase-multilingual-MiniLM-L12-v2). The question is embedded in every language it was translated into and averaged. Comparable across languages, though not perfectly language-neutral.",
   keyword:
     "BM25 over titles and abstracts using your question and its translated keyword variants. Each paper keeps its best-matching variant, so papers are not penalized for lacking English terms. Normalized within this result set.",
 };

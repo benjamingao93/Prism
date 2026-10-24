@@ -5,8 +5,8 @@ import type { Comparison } from "@/lib/comparison";
 import { languageName } from "@/lib/languages";
 import { LanguageBadge } from "./LanguageBadge";
 
-export function ComparisonPanel({ comparison }: { comparison: Comparison }) {
-  const { k, baselineVariant, baselinePoolSize, multilingualPoolSize, overlap, additional } = comparison;
+export function ComparisonPanel({ comparison, candidateCount }: { comparison: Comparison; candidateCount: number }) {
+  const { k, baselineVariant, overlap, additional } = comparison;
   if (!baselineVariant) return null;
 
   return (
@@ -24,12 +24,12 @@ export function ComparisonPanel({ comparison }: { comparison: Comparison }) {
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
         <div className="rounded-md border bg-background/60 px-2 py-2.5">
-          <div className="tabular font-serif text-xl font-semibold">{baselinePoolSize}</div>
-          <div className="text-[11px] text-muted-foreground">baseline papers</div>
+          <div className="tabular font-serif text-xl font-semibold">{baselineVariant.hitCount}</div>
+          <div className="text-[11px] text-muted-foreground">baseline candidates</div>
         </div>
         <div className="rounded-md border bg-background/60 px-2 py-2.5">
-          <div className="tabular font-serif text-xl font-semibold">{multilingualPoolSize}</div>
-          <div className="text-[11px] text-muted-foreground">multilingual papers</div>
+          <div className="tabular font-serif text-xl font-semibold">{candidateCount}</div>
+          <div className="text-[11px] text-muted-foreground">multilingual candidates</div>
         </div>
         <div className="rounded-md border bg-background/60 px-2 py-2.5">
           <div className="tabular font-serif text-xl font-semibold">{Math.round(overlap * 100)}%</div>

@@ -12,6 +12,8 @@ const STOPWORDS = new Set(
     "el la los las un una unos unas y o de del en con sin por para como es son fue ser al que qué cómo cual cuál cuales sobre entre efecto efectos estudio",
     // Portuguese
     "o a os as um uma e ou de do da dos das em no na nos nas com sem por para como é são foi ser ao que qual quais sobre entre efeito efeitos estudo",
+    // French / German / Italian / Indonesian articles and particles
+    "le les des du une et ou dans sur pour par avec sans est sont au aux der die das den dem des ein eine einer und oder mit für von zu im ist sind il lo gli della delle degli nel nella per con dan yang di ke dari untuk dengan pada dalam terhadap pengaruh",
     // Chinese / Japanese function words that ICU emits as words
     "的 了 和 与 及 对 在 是 中 等 如何 怎样 什么 哪些 影响 研究 の は が を に で と も へ や から まで について における による する した される こと ため 影響 研究",
   ]

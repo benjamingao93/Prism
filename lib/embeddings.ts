@@ -92,12 +92,22 @@ async function embed(extractor: Extractor, texts: string[]): Promise<number[][]>
   return out as number[][];
 }
 
+/** Mean of unit vectors, re-normalized: a single direction representing all of them. */
+export function centroid(vectors: number[][]): number[] {
+  const dims = vectors[0].length;
+  const sum = new Array<number>(dims).fill(0);
+  for (const v of vectors) for (let i = 0; i < dims; i++) sum[i] += v[i];
+  const norm = Math.hypot(...sum) || 1;
+  return sum.map((x) => x / norm);
+}
+
 /**
- * Cosine similarity between the user's original query and each paper's title + abstract.
+ * Cosine similarity between the question and each paper's title + abstract. The question is
+ * embedded in every language it was expressed in (original + translations) and averaged.
  * Waits up to `waitMs` for the model on first use; otherwise returns null with a reason.
  */
 export async function semanticScores(
-  query: string,
+  queryTexts: string[],
   papers: Paper[],
   { waitMs = 60_000 }: { waitMs?: number } = {},
 ): Promise<{ scores: Map<string, number> | null; notice: string | null }> {
@@ -122,11 +132,10 @@ export async function semanticScores(
 
   const withText = papers.filter((p) => paperText(p));
   try {
-    const vectors = await embed(extractor, [
-      truncateForEmbedding(query),
-      ...withText.map((p) => truncateForEmbedding(paperText(p))),
-    ]);
-    const [q, ...docs] = vectors;
+    const queries = queryTexts.map(truncateForEmbedding);
+    const vectors = await embed(extractor, [...queries, ...withText.map((p) => truncateForEmbedding(paperText(p)))]);
+    const q = centroid(vectors.slice(0, queries.length));
+    const docs = vectors.slice(queries.length);
     const scores = new Map<string, number>();
     withText.forEach((p, i) => scores.set(p.id, cosine(q, docs[i])));
     return { scores, notice: null };

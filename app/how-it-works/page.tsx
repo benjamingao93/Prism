@@ -40,9 +40,9 @@ export default function HowItWorks() {
       <div className="mt-8">
         <Step n={1} title="Expand the question across languages">
           <p>
-            A language model (Gemini, when configured) turns your question into short keyword queries in Chinese, Spanish, Japanese,
-            Portuguese and English, using the terminology papers in each language tend to use. Your original question is always kept and
-            searched too.
+            A language model (Gemini, when configured) turns your question into short keyword queries in 15 languages (English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian and Arabic),
+            using the terminology papers in each language tend to use. These are the largest abstract-bearing literatures in OpenAlex
+            that the embedding model supports. Your original question is always kept and searched too.
           </p>
           <p>
             Translations are machine-generated, and technical meaning can shift between languages. Every query variant is shown in the
@@ -52,9 +52,9 @@ export default function HowItWorks() {
 
         <Step n={2} title="Retrieve from OpenAlex, per language">
           <p>
-            Each variant becomes one OpenAlex title-and-abstract search. A translated query is restricted to papers whose OpenAlex
-            language tag matches it, so the Chinese query looks for Chinese-language papers. Year and publication-language filters are
-            sent to the API. If a query returns fewer than five papers, it is broadened step by step to its two most essential terms, then to the single core term. Ranking then reorders the broader set by relevance.
+            Each variant becomes one OpenAlex title-and-abstract search that retrieves up to 40 candidates (20 or 80 with the
+            search-depth setting). A translated query is restricted to papers whose OpenAlex language tag matches it, so the Chinese
+            query looks for Chinese-language papers. Year and publication-language filters are sent to the API. If a query returns fewer than five papers, it is broadened step by step to its two most essential terms, then to the single core term. Ranking then reorders the broader set by relevance.
           </p>
           <p>
             Responses are cached for 24 hours. Publication language comes from OpenAlex metadata, which is itself detected
@@ -62,17 +62,21 @@ export default function HowItWorks() {
           </p>
         </Step>
 
-        <Step n={3} title="Merge and deduplicate">
+        <Step n={3} title="Merge, deduplicate, and pick the top results">
           <p>
             Results are merged by normalized DOI, then OpenAlex ID, then an exact normalized title match with the same publication year.
             Records with different DOIs are never merged. Each paper keeps a list of every query variant that retrieved it and at what
             rank. That list drives the “via Chinese query” labels and the coverage statistics.
           </p>
+          <p>
+            All candidates from all languages are then scored together, and the top 100 (or 25 or 50) are shown. There is no
+            per-language quota: a language contributes as many papers as rank among the most relevant, which may be many or none.
+          </p>
         </Step>
 
         <Step n={4} title="Score with multilingual embeddings and BM25">
           <p>
-            <strong className="font-medium text-foreground">Semantic:</strong> your original question and each paper’s title and abstract
+            <strong className="font-medium text-foreground">Semantic:</strong> your question (embedded in every language it was translated into, then averaged) and each paper’s title and abstract
             are embedded with <code className="font-mono text-sm">paraphrase-multilingual-MiniLM-L12-v2</code>, a sentence-transformer
             trained to place paraphrases in 50+ languages near each other. It runs locally on the server. Score = cosine similarity.
             Long abstracts are truncated to roughly the model’s training length (about 128 tokens). Papers without an abstract are scored
@@ -147,7 +151,7 @@ export default function HowItWorks() {
           <li>Coverage is limited to what OpenAlex indexes. Many regional journals, theses and non-DOI literature are missing.</li>
           <li>OpenAlex language tags are machine-detected and sometimes wrong. Some papers tagged Chinese have English-only metadata.</li>
           <li>Many records lack abstracts. Those are scored on titles alone, which are short and can inflate or deflate similarity.</li>
-          <li>Each query variant retrieves a limited page of results (10–50), so this is a sample, not an exhaustive search.</li>
+          <li>Each language contributes at most 20–80 candidates (the search depth), so this is a sample, not an exhaustive search.</li>
           <li>Scores are relative within a result set and say nothing about a paper’s scientific quality.</li>
         </ul>
       </section>

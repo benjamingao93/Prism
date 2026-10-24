@@ -8,7 +8,7 @@ import { compareBaseline, computeCoverage } from "@/lib/comparison";
 import { filterByMinScore, filterPapers } from "@/lib/filters";
 import { languageName } from "@/lib/languages";
 import { sortByMode } from "@/lib/ranking";
-import type { Capabilities, RankedPaper, RankingMode, SearchResponse } from "@/lib/types";
+import { QUERY_LANGUAGES, type Capabilities, type RankedPaper, type RankingMode, type SearchResponse } from "@/lib/types";
 import { useAppState } from "./AppState";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { PaperCard, type PaperTranslation } from "./PaperCard";
@@ -87,7 +87,8 @@ export function SearchExperience() {
             yearFrom: s.yearFrom,
             yearTo: s.yearTo,
             mode: s.mode,
-            perVariant: s.perVariant,
+            limit: s.limit,
+            depth: s.depth,
           },
           controller.signal,
         );
@@ -124,16 +125,20 @@ export function SearchExperience() {
 
   const mode: RankingMode = response && !response.availableModes.includes(settings.mode) ? response.effectiveMode : settings.mode;
 
+  // The top N for the active mode: the response carries each mode's top N, so this is exact.
+  const topResults = useMemo(
+    () => (response ? sortByMode(response.papers, mode).slice(0, response.filters.limit) : []),
+    [response, mode],
+  );
+
   const displayed = useMemo(() => {
-    if (!response) return [];
-    const sorted = sortByMode(response.papers, mode);
-    const refined = filterPapers(sorted, { languages: refine, yearFrom: null, yearTo: null });
+    const refined = filterPapers(topResults, { languages: refine, yearFrom: null, yearTo: null });
     return filterByMinScore(refined, mode, settings.minScore);
-  }, [response, mode, refine, settings.minScore]);
+  }, [topResults, mode, refine, settings.minScore]);
 
   const shown = displayed.slice(0, visible);
   const variantMap = useMemo(() => new Map((response?.variants ?? []).map((v) => [v.id, v])), [response]);
-  const coverage = useMemo(() => (response ? computeCoverage(response.papers, response.variants) : null), [response]);
+  const coverage = useMemo(() => (response ? computeCoverage(topResults, response.variants) : null), [response, topResults]);
   const comparison = useMemo(
     () => (response && settings.compare ? compareBaseline(response.papers, response.variants, mode, 10) : null),
     [response, settings.compare, mode],
@@ -148,7 +153,11 @@ export function SearchExperience() {
   // counter discards responses that arrive after a new search started.
   useEffect(() => {
     if (!translationEnabled || !response) return;
-    const pending = shown.filter((p) => p.title && !requestedRef.current.has(p.id)).slice(0, TRANSLATE_BATCH);
+    // Papers already published in the reader's language don't need a title translation. (The
+    // reverse case, e.g. a Chinese paper with English metadata, is detected server-side.)
+    const pending = shown
+      .filter((p) => p.title && p.language !== targetLang && !requestedRef.current.has(p.id))
+      .slice(0, TRANSLATE_BATCH);
     if (!pending.length) return;
     for (const p of pending) requestedRef.current.add(p.id);
     const gen = generationRef.current;
@@ -215,7 +224,8 @@ export function SearchExperience() {
     (JSON.stringify([...settings.publicationLanguages].sort()) !== JSON.stringify([...response.filters.publicationLanguages].sort()) ||
       settings.yearFrom !== response.filters.yearFrom ||
       settings.yearTo !== response.filters.yearTo ||
-      settings.perVariant !== response.filters.perVariant ||
+      settings.limit !== response.filters.limit ||
+      settings.depth !== response.filters.depth ||
       queryLanguage !== response.queryLanguage);
 
   const hasResults = status === "success" && response;
@@ -282,7 +292,15 @@ export function SearchExperience() {
         )}
 
         {status === "loading" && (
-          <ResultSkeleton note={caps?.embeddings === "loading" ? "Retrieving papers… the embedding model is still loading on first run." : null} />
+          <ResultSkeleton
+            note={
+              caps?.embeddings === "loading"
+                ? "Retrieving papers… the embedding model is still loading on first run."
+                : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking up to ${
+                    (settings.publicationLanguages.length || QUERY_LANGUAGES.length) * settings.depth
+                  } candidates together…`
+            }
+          />
         )}
 
         {status === "error" && error && <ErrorState message={error.message} code={error.code} onRetry={() => runSearch(lastQueryRef.current || query)} />}
@@ -295,6 +313,7 @@ export function SearchExperience() {
                 mode={mode}
                 onModeChange={(m) => setSettings((s) => ({ ...s, mode: m }))}
                 shownCount={displayed.length}
+                topCount={topResults.length}
                 refine={refine}
                 minScore={settings.minScore}
                 onClearRefine={() => setRefine([])}
@@ -309,7 +328,7 @@ export function SearchExperience() {
                 </div>
               )}
 
-              {comparison && <ComparisonPanel comparison={comparison} />}
+              {comparison && <ComparisonPanel comparison={comparison} candidateCount={response.candidateCount} />}
 
               {displayed.length === 0 ? (
                 <NoResults
@@ -351,6 +370,7 @@ export function SearchExperience() {
               {coverage && (
                 <SearchCoverage
                   coverage={coverage}
+                  candidateCount={response.candidateCount}
                   variants={response.variants}
                   refine={refine}
                   onToggleRefine={(code) =>

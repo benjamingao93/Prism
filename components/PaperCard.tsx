@@ -179,7 +179,7 @@ export function PaperCard({
             )}
           </div>
 
-          <h3 className="font-serif text-[17px] leading-snug font-semibold text-foreground sm:text-lg" lang={paper.language ?? undefined}>
+          <h3 dir="auto" className="font-serif text-[17px] leading-snug font-semibold text-foreground sm:text-lg" lang={paper.language ?? undefined}>
             {sourceUrl ? (
               <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-accent-blue hover:underline decoration-1 underline-offset-2">
                 {paper.title ?? "Untitled record"}
@@ -219,6 +219,7 @@ export function PaperCard({
       <div className="mt-3">
         {paper.abstract ? (
           <p
+            dir="auto"
             className={cn("text-[14px] leading-relaxed text-secondary-foreground", !expanded && "line-clamp-3")}
             lang={showTranslated && translatedAbstract ? targetLang : (paper.language ?? undefined)}
           >

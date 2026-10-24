@@ -1,10 +1,22 @@
 import { z } from "zod";
 
-export const QUERY_LANGUAGES = ["en", "zh", "es", "ja", "pt"] as const;
+/**
+ * Languages Babel Scholar can search in (and accept questions in), ISO 639-1. Chosen from the
+ * largest abstract-bearing literatures in OpenAlex that the multilingual embedding model supports.
+ * Each one adds an OpenAlex request per search.
+ */
+export const QUERY_LANGUAGES = [
+  "en", "zh", "es", "pt", "fr", "de", "ja", "ru", "ko", "id", "it", "tr", "pl", "uk", "ar",
+] as const;
 export type QueryLanguage = (typeof QUERY_LANGUAGES)[number];
 
-/** Publication-language filter options (ISO 639-1, as reported by OpenAlex). */
-export const PUBLICATION_LANGUAGES = ["en", "zh", "es", "ja", "pt", "fr", "de", "ko", "ru"] as const;
+/** Publication-language filter options: the same set, as reported by OpenAlex metadata. */
+export const PUBLICATION_LANGUAGES = QUERY_LANGUAGES;
+
+/** How many top-ranked papers to return, across all languages combined. */
+export const RESULT_LIMITS = [25, 50, 100] as const;
+/** How many candidates to retrieve per language before ranking. */
+export const SEARCH_DEPTHS = [20, 40, 80] as const;
 
 export const RANKING_MODES = ["hybrid", "semantic", "keyword"] as const;
 export type RankingMode = (typeof RANKING_MODES)[number];
@@ -20,7 +32,10 @@ export const SearchRequestSchema = z
     yearFrom: z.number().int().min(1800).max(2100).nullable().default(null),
     yearTo: z.number().int().min(1800).max(2100).nullable().default(null),
     mode: z.enum(RANKING_MODES).default("hybrid"),
-    perVariant: z.number().int().min(5).max(50).default(25),
+    /** Top-N papers returned overall, ranked across all languages (no per-language quota). */
+    limit: z.number().int().min(5).max(100).default(100),
+    /** Candidates retrieved per language variant; the ranking pool is the union of these. */
+    depth: z.number().int().min(5).max(100).default(40),
   })
   .refine((r) => r.yearFrom == null || r.yearTo == null || r.yearFrom <= r.yearTo, {
     message: "Start year must be before end year",
@@ -126,9 +141,17 @@ export interface SearchResponse {
     publicationLanguages: string[];
     yearFrom: number | null;
     yearTo: number | null;
-    perVariant: number;
+    limit: number;
+    depth: number;
   };
   variants: QueryVariant[];
+  /** Unique candidates ranked (after deduplication), before taking the top `limit`. */
+  candidateCount: number;
+  /**
+   * The top `limit` papers under every available ranking mode (their union), plus the
+   * original-query baseline's top papers, so switching modes client-side stays exact.
+   * Sort by a mode and take the first `filters.limit` to get that mode's results.
+   */
   papers: RankedPaper[];
   capabilities: Capabilities;
   notices: string[];

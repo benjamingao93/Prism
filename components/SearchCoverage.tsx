@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   coverage: Coverage;
+  candidateCount: number;
   variants: QueryVariant[];
   refine: string[];
   onToggleRefine: (code: string) => void;
@@ -22,27 +23,27 @@ function Stat({ label, value, hint }: { label: string; value: number | string; h
   );
 }
 
-export function SearchCoverage({ coverage, variants, refine, onToggleRefine }: Props) {
+export function SearchCoverage({ coverage, candidateCount, variants, refine, onToggleRefine }: Props) {
   const max = Math.max(1, ...coverage.languages.map((l) => l.count));
   return (
     <section aria-labelledby="coverage-title" className="rounded-lg border bg-surface p-4">
       <h2 id="coverage-title" className="font-serif text-base font-semibold">
         Search coverage
       </h2>
-      <p className="mb-3 text-xs text-muted-foreground">Computed from this result set only.</p>
+      <p className="mb-3 text-xs text-muted-foreground">Computed from the top results shown, ranked from all candidates.</p>
 
       <div className="grid grid-cols-2 gap-2">
-        <Stat label="Unique papers" value={coverage.uniquePapers} />
+        <Stat label="Top results" value={coverage.uniquePapers} />
         <Stat label="Publication languages" value={coverage.languageCount} hint="Languages reported in source metadata" />
         <Stat
           label="Found only via translated queries"
           value={coverage.viaTranslatedOnly}
           hint="Papers that the original-language query did not retrieve"
         />
-        <Stat label="With abstract" value={coverage.withAbstract} />
+        <Stat label="Candidates ranked" value={candidateCount} hint="Unique papers retrieved across all languages before taking the top results" />
       </div>
 
-      <h3 className="mt-4 mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">By publication language</h3>
+      <h3 className="mt-4 mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Top results by language</h3>
       <ul className="space-y-1">
         {coverage.languages.map((l) => {
           const code = l.code ?? "unknown";
@@ -90,7 +91,7 @@ export function SearchCoverage({ coverage, variants, refine, onToggleRefine }: P
                 {v.source === "crossref" && " · Crossref"}
               </span>
               <span className="tabular ml-auto text-muted-foreground">
-                {v.skipped ? "skipped" : v.error ? "failed" : `${v.hitCount} retrieved`}
+                {v.skipped ? "skipped" : v.error ? "failed" : `${v.hitCount} candidates`}
               </span>
             </div>
             <p className="mt-0.5 truncate pl-5 text-muted-foreground" lang={v.lang} title={v.text}>

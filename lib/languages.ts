@@ -1,4 +1,4 @@
-import type { QueryLanguage } from "./types";
+import { QUERY_LANGUAGES, type QueryLanguage } from "./types";
 
 interface LanguageLabel {
   english: string;
@@ -32,9 +32,9 @@ const LABELS: Record<string, LanguageLabel> = {
   hi: { english: "Hindi", native: "हिन्दी" },
 };
 
-export const QUERY_LANGUAGE_OPTIONS: { code: QueryLanguage; label: string; native: string }[] = (
-  ["en", "zh", "es", "ja", "pt"] as const
-).map((code) => ({ code, label: LABELS[code].english, native: LABELS[code].native }));
+export const QUERY_LANGUAGE_OPTIONS: { code: QueryLanguage; label: string; native: string }[] = QUERY_LANGUAGES.map(
+  (code) => ({ code, label: LABELS[code].english, native: LABELS[code].native }),
+);
 
 /** English name for a language code, falling back to Intl.DisplayNames, then the raw code. */
 export function languageName(code: string | null | undefined): string {

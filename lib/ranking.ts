@@ -140,6 +140,35 @@ export function sortByMode(papers: RankedPaper[], mode: RankingMode): RankedPape
   });
 }
 
+/**
+ * Pick what a response carries: the top `limit` papers under each mode, plus the top `baselineK`
+ * papers among those retrieved by `baselineVariantId` (for the comparison view). The result is
+ * ordered by `primary`. Selection ignores publication language entirely — there is no quota.
+ */
+export function selectTopResults(
+  papers: RankedPaper[],
+  modes: RankingMode[],
+  primary: RankingMode,
+  limit: number,
+  baseline?: { variantId: string; k: number },
+): RankedPaper[] {
+  const keep = new Set<string>();
+  for (const mode of modes) {
+    const sorted = sortByMode(papers, mode);
+    for (const p of sorted.slice(0, limit)) keep.add(p.id);
+    if (baseline) {
+      sorted
+        .filter((p) => p.retrievedBy.some((r) => r.variantId === baseline.variantId))
+        .slice(0, baseline.k)
+        .forEach((p) => keep.add(p.id));
+    }
+  }
+  return sortByMode(
+    papers.filter((p) => keep.has(p.id)),
+    primary,
+  );
+}
+
 export function relevanceLabel(p: RankedPaper, mode: RankingMode): { label: string; tone: "high" | "medium" | "low" } {
   const s = scoreFor(p, mode) ?? 0;
   if (mode === "semantic") {

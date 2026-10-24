@@ -27,9 +27,9 @@ export function ResultSkeleton({ note }: { note?: string | null }) {
 
 export function InitialState() {
   const steps = [
-    ["Expand", "Your question is translated into Chinese, Spanish, Japanese and Portuguese keyword queries."],
-    ["Retrieve", "Each variant searches OpenAlex in its own publication language."],
-    ["Rank", "Papers are scored with multilingual embeddings and BM25, then explained."],
+    ["Expand", "Your question is turned into keyword queries in 15 languages, from Chinese and Spanish to Korean and Arabic."],
+    ["Retrieve", "Each query searches OpenAlex for candidates in its own publication language."],
+    ["Rank", "All candidates are ranked together and the 100 most relevant are shown, whatever their language."],
   ];
   return (
     <div className="grid gap-3 sm:grid-cols-3">

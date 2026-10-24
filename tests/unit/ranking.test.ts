@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bm25Scores } from "@/lib/bm25";
-import { availableModes, cosine, HYBRID_WEIGHTS, minMax, resolveMode, scorePapers, sortByMode } from "@/lib/ranking";
+import { availableModes, cosine, HYBRID_WEIGHTS, minMax, resolveMode, scorePapers, selectTopResults, sortByMode } from "@/lib/ranking";
 import { extractKeywords, tokenize } from "@/lib/tokenize";
 import type { Paper, QueryVariant } from "@/lib/types";
 
@@ -133,6 +133,17 @@ describe("scorePapers and ranking modes", () => {
     expect(modes).toEqual(["keyword"]);
     expect(resolveMode("hybrid", modes)).toBe("keyword");
     expect(resolveMode("semantic", availableModes(scorePapers({ papers, variants, semantic }), true))).toBe("semantic");
+  });
+
+  it("selects the union of each mode's top N plus the baseline's top papers", () => {
+    const ranked = scorePapers({ papers, variants, semantic });
+    // Top-1 by semantic is B; top-1 by keyword is A or B; the English baseline's top-1 is A.
+    const selected = selectTopResults(ranked, ["semantic", "keyword"], "semantic", 1, { variantId: "v-en", k: 1 });
+    const ids = selected.map((p) => p.id);
+    expect(ids[0]).toBe("B");
+    expect(ids).toContain(sortByMode(ranked, "keyword")[0].id);
+    expect(ids).toContain("A");
+    expect(ids).not.toContain("C");
   });
 
   it("never uses publication language in the score", () => {

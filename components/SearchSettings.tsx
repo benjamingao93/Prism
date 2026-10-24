@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { languageLabel } from "@/lib/languages";
-import { PUBLICATION_LANGUAGES, type RankingMode } from "@/lib/types";
+import { PUBLICATION_LANGUAGES, RESULT_LIMITS, SEARCH_DEPTHS, type RankingMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { MODE_DESCRIPTIONS, RankingModeToggle } from "./RankingInfo";
 
@@ -17,7 +17,10 @@ export interface SearchSettingsValue {
   yearFrom: number | null;
   yearTo: number | null;
   mode: RankingMode;
-  perVariant: number;
+  /** Top-N results across all languages. */
+  limit: number;
+  /** Candidates retrieved per language before ranking. */
+  depth: number;
   minScore: number;
   translate: boolean;
   compare: boolean;
@@ -28,13 +31,35 @@ export const DEFAULT_SETTINGS: SearchSettingsValue = {
   yearFrom: null,
   yearTo: null,
   mode: "hybrid",
-  perVariant: 25,
+  limit: 100,
+  depth: 40,
   minScore: 0,
   translate: true,
   compare: false,
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
+
+function Segmented({ options, value, onChange }: { options: [number, string][]; value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex gap-1">
+      {options.map(([n, label]) => (
+        <button
+          key={n}
+          type="button"
+          aria-pressed={value === n}
+          onClick={() => onChange(n)}
+          className={cn(
+            "h-7 rounded-md border px-2.5 text-xs",
+            value === n ? "border-accent-blue/40 bg-accent-blue-soft text-accent-blue" : "bg-surface text-muted-foreground",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function YearInput({ id, value, onChange, placeholder }: { id: string; value: number | null; onChange: (v: number | null) => void; placeholder: string }) {
   return (
@@ -67,7 +92,9 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
   const set = <K extends keyof SearchSettingsValue>(k: K, v: SearchSettingsValue[K]) => onChange({ ...value, [k]: v });
   const allLanguages = value.publicationLanguages.length === 0;
   const activeCount =
-    (allLanguages ? 0 : 1) + (value.yearFrom || value.yearTo ? 1 : 0) + (value.minScore > 0 ? 1 : 0) + (value.perVariant !== 25 ? 1 : 0);
+    (allLanguages ? 0 : 1) + (value.yearFrom || value.yearTo ? 1 : 0) + (value.minScore > 0 ? 1 : 0) +
+    (value.limit !== DEFAULT_SETTINGS.limit ? 1 : 0) +
+    (value.depth !== DEFAULT_SETTINGS.depth ? 1 : 0);
 
   const toggleLang = (code: string, checked: boolean) => {
     const next = checked ? [...value.publicationLanguages, code] : value.publicationLanguages.filter((c) => c !== code);
@@ -82,7 +109,7 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
         <span className="hidden text-xs text-muted-foreground sm:inline">
           {allLanguages ? "All publication languages" : `${value.publicationLanguages.length} languages`} ·{" "}
           {value.yearFrom || value.yearTo ? `${value.yearFrom ?? "…"}–${value.yearTo ?? "…"}` : "Any year"} ·{" "}
-          {value.perVariant} per query
+          Top {value.limit}
         </span>
         {activeCount > 0 && (
           <span className="rounded bg-accent-blue-soft px-1.5 text-[11px] font-medium text-accent-blue">{activeCount} active</span>
@@ -109,7 +136,8 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              Applied at retrieval. When a filter is set, papers without language metadata are excluded.
+              All selected languages are searched with a translated query. When a filter is set, papers without language
+              metadata are excluded.
             </p>
           </fieldset>
 
@@ -133,23 +161,22 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
 
             <div className="grid gap-4 sm:grid-cols-2">
               <fieldset className="space-y-2">
-                <legend className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Results per query</legend>
-                <div className="flex gap-1">
-                  {[10, 25, 50].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      aria-pressed={value.perVariant === n}
-                      onClick={() => set("perVariant", n)}
-                      className={cn(
-                        "tabular h-7 rounded-md border px-2.5 text-xs",
-                        value.perVariant === n ? "border-accent-blue/40 bg-accent-blue-soft text-accent-blue" : "bg-surface text-muted-foreground",
-                      )}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
+                <legend className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Results</legend>
+                <Segmented
+                  options={RESULT_LIMITS.map((n) => [n, `Top ${n}`])}
+                  value={value.limit}
+                  onChange={(n) => set("limit", n)}
+                />
+                <p className="text-xs text-muted-foreground">Most relevant across all languages, with no per-language quota.</p>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Search depth</legend>
+                <Segmented
+                  options={SEARCH_DEPTHS.map((n, i) => [n, ["Fast", "Standard", "Deep"][i]])}
+                  value={value.depth}
+                  onChange={(n) => set("depth", n)}
+                />
+                <p className="text-xs text-muted-foreground">{value.depth} candidates per language are ranked together. Deeper is slower.</p>
               </fieldset>
               <div className="space-y-2">
                 <Label htmlFor="min-score" className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
