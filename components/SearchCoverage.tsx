@@ -1,0 +1,110 @@
+"use client";
+
+import { AlertCircle, CheckCircle2, CircleSlash, RefreshCw } from "lucide-react";
+import type { Coverage } from "@/lib/comparison";
+import { languageLabel, languageName } from "@/lib/languages";
+import type { QueryVariant } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+interface Props {
+  coverage: Coverage;
+  variants: QueryVariant[];
+  refine: string[];
+  onToggleRefine: (code: string) => void;
+}
+
+function Stat({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
+  return (
+    <div className="rounded-md border bg-background/60 px-3 py-2.5" title={hint}>
+      <div className="tabular font-serif text-2xl leading-none font-semibold">{value}</div>
+      <div className="mt-1 text-[11px] leading-tight text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+export function SearchCoverage({ coverage, variants, refine, onToggleRefine }: Props) {
+  const max = Math.max(1, ...coverage.languages.map((l) => l.count));
+  return (
+    <section aria-labelledby="coverage-title" className="rounded-lg border bg-surface p-4">
+      <h2 id="coverage-title" className="font-serif text-base font-semibold">
+        Search coverage
+      </h2>
+      <p className="mb-3 text-xs text-muted-foreground">Computed from this result set only.</p>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Stat label="Unique papers" value={coverage.uniquePapers} />
+        <Stat label="Publication languages" value={coverage.languageCount} hint="Languages reported in source metadata" />
+        <Stat
+          label="Found only via translated queries"
+          value={coverage.viaTranslatedOnly}
+          hint="Papers that the original-language query did not retrieve"
+        />
+        <Stat label="With abstract" value={coverage.withAbstract} />
+      </div>
+
+      <h3 className="mt-4 mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">By publication language</h3>
+      <ul className="space-y-1">
+        {coverage.languages.map((l) => {
+          const code = l.code ?? "unknown";
+          const active = refine.includes(code);
+          return (
+            <li key={code}>
+              <button
+                type="button"
+                onClick={() => onToggleRefine(code)}
+                aria-pressed={active}
+                className={cn(
+                  "group grid w-full grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-2 rounded px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted",
+                  active && "bg-accent-blue-soft",
+                )}
+              >
+                <span className={cn("truncate", !l.code && "text-muted-foreground italic")}>{languageLabel(l.code)}</span>
+                <span className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                  <span
+                    className={cn("block h-full rounded-full", l.code && l.code !== "en" ? "bg-accent-blue" : "bg-foreground/35")}
+                    style={{ width: `${(l.count / max) * 100}%` }}
+                  />
+                </span>
+                <span className="tabular w-6 text-right text-muted-foreground">{l.count}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-1.5 text-[11px] text-muted-foreground">Click a language to filter the results shown.</p>
+
+      <h3 className="mt-4 mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Query variants</h3>
+      <ul className="space-y-1.5">
+        {variants.map((v) => (
+          <li key={v.id} className="text-xs">
+            <div className="flex items-center gap-1.5">
+              {v.skipped ? (
+                <CircleSlash className="size-3.5 shrink-0 text-muted-foreground" aria-label="Skipped" />
+              ) : v.error ? (
+                <AlertCircle className="size-3.5 shrink-0 text-destructive" aria-label="Failed" />
+              ) : (
+                <CheckCircle2 className="size-3.5 shrink-0 text-success" aria-label="Succeeded" />
+              )}
+              <span className="font-medium">
+                {v.kind === "original" ? `Original · ${languageName(v.lang)}` : languageName(v.lang)}
+                {v.source === "crossref" && " · Crossref"}
+              </span>
+              <span className="tabular ml-auto text-muted-foreground">
+                {v.skipped ? "skipped" : v.error ? "failed" : `${v.hitCount} retrieved`}
+              </span>
+            </div>
+            <p className="mt-0.5 truncate pl-5 text-muted-foreground" lang={v.lang} title={v.text}>
+              “{v.searchQuery}”
+              {v.relaxed && (
+                <span className="ml-1 inline-flex items-center gap-0.5 text-warning" title="The strict query returned too few results, so a broader query was used">
+                  <RefreshCw className="size-3" aria-hidden="true" /> broadened
+                </span>
+              )}
+            </p>
+            {(v.error || v.skipped) && <p className="pl-5 text-[11px] text-muted-foreground">{v.error ?? v.skipped}</p>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
