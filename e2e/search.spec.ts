@@ -6,8 +6,8 @@ import type { Capabilities, QueryVariant, RankedPaper, SearchResponse } from "..
 const caps: Capabilities = { llm: false, embeddings: "ready", embeddingModel: "test-model", openalexKey: true, crossref: false };
 
 const variants: QueryVariant[] = [
-  { id: "openalex:en:0", lang: "en", kind: "original", text: "drought rice", searchQuery: "drought rice", source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, error: null, skipped: null },
-  { id: "openalex:zh:1", lang: "zh", kind: "translated", text: "干旱 水稻", searchQuery: "干旱 水稻", source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, error: null, skipped: null },
+  { id: "openalex:en:0", lang: "en", kind: "original", text: "drought rice", searchQuery: "drought rice", concepts: ["drought", "rice"], source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, error: null, skipped: null },
+  { id: "openalex:zh:1", lang: "zh", kind: "translated", text: "干旱 水稻", searchQuery: "干旱 水稻", concepts: ["干旱", "水稻"], source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, error: null, skipped: null },
 ];
 
 function paper(id: string, title: string, language: string | null, semanticRaw: number, keyword: number, variantId: string): RankedPaper {
@@ -42,7 +42,7 @@ const response: SearchResponse = {
   requestedMode: "hybrid",
   effectiveMode: "hybrid",
   availableModes: ["hybrid", "semantic", "keyword"],
-  filters: { publicationLanguages: [], yearFrom: null, yearTo: null, limit: 100, depth: 40 },
+  filters: { publicationLanguages: [], yearFrom: null, yearTo: null, limit: 100 },
   variants,
   candidateCount: 3,
   // Keyword favors Alpha; semantic favors Gamma (Chinese).
@@ -82,7 +82,7 @@ test("search, switch ranking modes, and filter by language", async ({ page }) =>
   await page.getByLabel("Research question").press("Enter");
 
   await expect(page.getByTestId("paper-card")).toHaveCount(3);
-  expect(lastBody).toMatchObject({ query: "How does drought affect rice?", queryLanguage: "en", mode: "hybrid", limit: 100, depth: 40 });
+  expect(lastBody).toMatchObject({ query: "How does drought affect rice?", queryLanguage: "en", mode: "hybrid", limit: 100 });
   await expect(page.getByText("of 3 candidates from OpenAlex", { exact: false })).toBeVisible();
 
   // Hybrid order: C (0.66) > B (0.57) > A (0.51)

@@ -52,8 +52,8 @@ export default function HowItWorks() {
 
         <Step n={2} title="Retrieve from OpenAlex, per language">
           <p>
-            Each variant becomes one OpenAlex title-and-abstract search that retrieves up to 40 candidates (20 or 80 with the
-            search-depth setting). A translated query is restricted to papers whose OpenAlex language tag matches it, so the Chinese
+            Each variant becomes one OpenAlex title-and-abstract search that retrieves up to 100 candidates: as many as the results
+            list holds, so any single language could fill the whole list on its own. No language is capped below that. A translated query is restricted to papers whose OpenAlex language tag matches it, so the Chinese
             query looks for Chinese-language papers. Year and publication-language filters are sent to the API. If a query returns fewer than five papers, it is broadened step by step to its two most essential terms, then to the single core term. Ranking then reorders the broader set by relevance.
           </p>
           <p>
@@ -70,7 +70,8 @@ export default function HowItWorks() {
           </p>
           <p>
             All candidates from all languages are then scored together, and the top 100 (or 25 or 50) are shown. There is no
-            per-language quota: a language contributes as many papers as rank among the most relevant, which may be many or none.
+            per-language quota at retrieval or in the results: a language contributes as many papers as rank among the most
+            relevant, which may be all of them or none. For a topic studied mostly in English, expect mostly English results.
           </p>
         </Step>
 
@@ -79,13 +80,16 @@ export default function HowItWorks() {
             <strong className="font-medium text-foreground">Semantic:</strong> your question (embedded in every language it was translated into, then averaged) and each paper’s title and abstract
             are embedded with <code className="font-mono text-sm">paraphrase-multilingual-MiniLM-L12-v2</code>, a sentence-transformer
             trained to place paraphrases in 50+ languages near each other. It runs locally on the server. Score = cosine similarity.
-            Long abstracts are truncated to roughly the model’s training length (about 128 tokens). Papers without an abstract are scored
-            on their title and labeled as such.
+            Text is truncated to 128 tokens, the model’s training length, as in its reference configuration. When there are more than three times as many candidates as results, a fast title-only pass first shortlists the top three times as many under any ranking mode, without regard to language; the shortlist is then scored on title and abstract. Each paper is scored on the better of its title alone and its title plus abstract, because abstracts add methods and numbers that dilute similarity. Scoring only title plus abstract would rank papers without an abstract above comparable papers that have one.
           </p>
           <p>
             <strong className="font-medium text-foreground">Keyword:</strong> BM25 (k1 = 1.2, b = 0.75) over titles and abstracts. Text is
             segmented with ICU word boundaries, which handle Chinese and Japanese words rather than single characters. Each paper is
             scored against every query variant and keeps its best score, so a Spanish paper is matched against the Spanish query.
+            Each score is divided by that query’s maximum possible score, giving the share of an ideal match on the same 0–1 scale in
+            every language. Without this, the rarity of each language’s words in a mostly-English pool would inflate every
+            non-English score. Length is compared only among papers of the same kind (title-only or title plus abstract), and scoring
+            always uses all of a language’s concepts, even when its search was broadened.
           </p>
           <p>
             <strong className="font-medium text-foreground">Hybrid:</strong> {HYBRID_WEIGHTS.semantic} × semantic + {HYBRID_WEIGHTS.keyword}{" "}
@@ -151,7 +155,11 @@ export default function HowItWorks() {
           <li>Coverage is limited to what OpenAlex indexes. Many regional journals, theses and non-DOI literature are missing.</li>
           <li>OpenAlex language tags are machine-detected and sometimes wrong. Some papers tagged Chinese have English-only metadata.</li>
           <li>Many records lack abstracts. Those are scored on titles alone, which are short and can inflate or deflate similarity.</li>
-          <li>Each language contributes at most 20–80 candidates (the search depth), so this is a sample, not an exhaustive search.</li>
+          <li>Each language contributes at most 100 candidates (OpenAlex’s own top matches), so this is a sample, not an exhaustive search.</li>
+          <li>
+            Large candidate pools are shortlisted using titles before full scoring. A paper with an uninformative title but a
+            highly relevant abstract can occasionally miss the shortlist.
+          </li>
           <li>Scores are relative within a result set and say nothing about a paper’s scientific quality.</li>
         </ul>
       </section>

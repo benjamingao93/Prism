@@ -13,9 +13,9 @@ const expansion: ExpansionResult = {
   model: "test",
   notice: null,
   variants: [
-    { lang: "en", kind: "original", text: "drought rice", searchQuery: "drought rice" },
-    { lang: "zh", kind: "translated", text: "干旱 水稻", searchQuery: "干旱 水稻" },
-    { lang: "es", kind: "translated", text: "sequía arroz", searchQuery: "sequía arroz" },
+    { lang: "en", kind: "original", text: "drought rice", concepts: ["drought", "rice"] },
+    { lang: "zh", kind: "translated", text: "干旱 水稻", concepts: ["干旱", "水稻"] },
+    { lang: "es", kind: "translated", text: "sequía arroz", concepts: ["sequía", "arroz"] },
   ],
 };
 
@@ -37,7 +37,7 @@ function deps(search: (params: OpenAlexSearchParams) => Promise<SearchResult>, o
   };
 }
 
-const request = SearchRequestSchema.parse({ query: "How does drought affect rice?", depth: 10 });
+const request = SearchRequestSchema.parse({ query: "How does drought affect rice?", limit: 10 });
 
 function byLanguage(params: OpenAlexSearchParams): Promise<SearchResult> {
   if (params.languages.includes("zh")) return Promise.resolve({ papers: zhPapers, total: 2 });
@@ -66,13 +66,59 @@ describe("runSearch", () => {
     expect(zhOnly.explanations.some((e) => e.kind === "title-only")).toBe(true);
   });
 
-  it("requests `depth` candidates per language and reports the candidate pool size", async () => {
+  it("lets every language supply as many candidates as the result list holds", async () => {
     const d = deps(byLanguage);
     const res = await runSearch(request, d);
     const calls = (d.searchOpenAlex as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0] as OpenAlexSearchParams);
     expect(calls.every((c) => c.perPage === 10)).toBe(true);
     expect(res.candidateCount).toBe(6);
-    expect(res.filters).toMatchObject({ limit: 100, depth: 10 });
+    expect(res.filters).toMatchObject({ limit: 10 });
+  });
+
+  it("lets English fill the entire list when English papers are the most relevant", async () => {
+    // 10 strong English candidates and 10 weaker candidates in each of two other languages.
+    const en = Array.from({ length: 10 }, (_, i) => p(100 + i, { language: "en" }));
+    const zh = Array.from({ length: 10 }, (_, i) => p(200 + i, { language: "zh", title: `水稻 研究 ${i}` }));
+    const es = Array.from({ length: 10 }, (_, i) => p(300 + i, { language: "es", title: `arroz estudio ${i}` }));
+    const d = deps(
+      async (params) =>
+        params.languages.includes("zh") ? { papers: zh, total: 10 } : params.languages.includes("es") ? { papers: es, total: 10 } : { papers: en, total: 10 },
+      { semantic: async (_q, papers) => ({ scores: new Map(papers.map((x) => [x.id, x.language === "en" ? 0.9 : 0.4])), notice: null }) },
+    );
+    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 10 }), d);
+    const top = sortByMode(res.papers, res.effectiveMode).slice(0, res.filters.limit);
+    expect(top).toHaveLength(10);
+    expect(top.every((x) => x.language === "en")).toBe(true);
+  });
+
+  it("shortlists a large pool by title, then scores the shortlist on title + abstract", async () => {
+    // 4 languages × 10 candidates = 40 > 3 × limit (5), so stage 1 runs.
+    const langs = ["en", "zh", "es", "ja"] as const;
+    const pools = Object.fromEntries(langs.map((l, li) => [l, Array.from({ length: 10 }, (_, i) => p(500 + li * 10 + i, { language: l }))]));
+    const quality = (x: Paper) => (Number(x.doi!.split(".").pop()) % 10) / 10; // same for every language
+    const calls: { field: string; n: number }[] = [];
+    const d = deps(
+      async (params) => ({ papers: pools[(params.languages[0] as (typeof langs)[number]) ?? "en"] ?? [], total: 10 }),
+      {
+        expand: async () => ({
+          ...expansion,
+          variants: [expansion.variants[0], ...langs.slice(1).map((l) => ({ lang: l, kind: "translated" as const, text: l, concepts: [l] }))],
+        }),
+        semantic: async (_q, papers, field) => {
+          calls.push({ field, n: papers.length });
+          return { scores: new Map(papers.map((x) => [x.id, quality(x)])), notice: null };
+        },
+      },
+    );
+    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 5 }), d);
+    expect(calls[0]).toEqual({ field: "title", n: 40 });
+    expect(calls[1].field).toBe("full");
+    expect(calls[1].n).toBeLessThan(40);
+    expect(res.candidateCount).toBe(40);
+    // The best-scoring papers survive the shortlist regardless of language.
+    const top = sortByMode(res.papers, "semantic").slice(0, 4);
+    expect(new Set(top.map((x) => x.language))).toEqual(new Set(langs));
+    expect(top.every((x) => quality(x) === 0.9)).toBe(true);
   });
 
   it("returns the top N across all languages, with no per-language quota", async () => {
@@ -83,7 +129,7 @@ describe("runSearch", () => {
         Promise.resolve(params.languages.includes("zh") ? { papers: zhMany, total: 10 } : params.languages.length ? { papers: [], total: 0 } : { papers: enPapers, total: 5 }),
       { semantic: async (_q, papers) => ({ scores: new Map(papers.map((x) => [x.id, x.language === "zh" ? 0.9 : 0.2])), notice: null }) },
     );
-    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 8, depth: 10 }), d);
+    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 8 }), d);
     const top = sortByMode(res.papers, res.effectiveMode).slice(0, res.filters.limit);
     expect(top).toHaveLength(8);
     expect(top.every((x) => x.language === "zh")).toBe(true);
@@ -105,7 +151,7 @@ describe("runSearch", () => {
         return { scores, notice: null };
       },
     });
-    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 5, depth: 20 }), d);
+    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 5 }), d);
     const full = scorePapers({ papers: pool, variants: res.variants, semantic: scores });
     const returned = new Set(res.papers.map((x) => x.id));
     for (const mode of ["semantic", "keyword", "hybrid"] as const) {
@@ -168,11 +214,13 @@ describe("runSearch", () => {
     });
     const res = await runSearch(
       request,
-      { ...d, expand: async () => ({ ...expansion, variants: [expansion.variants[0], { lang: "zh", kind: "translated", text: "微塑料", searchQuery: "微塑料 海洋 生态 影响" }] }) },
+      { ...d, expand: async () => ({ ...expansion, variants: [expansion.variants[0], { lang: "zh", kind: "translated", text: "微塑料", concepts: ["微塑料", "海洋", "生态", "影响"] }] }) },
     );
     const zh = res.variants.find((v) => v.lang === "zh")!;
     expect(zh.relaxed).toBe(true);
     expect(zh.searchQuery).toBe("微塑料");
+    // Broadening widens retrieval only; keyword scoring still uses every concept.
+    expect(zh.concepts).toEqual(["微塑料", "海洋", "生态", "影响"]);
     expect(zh.hitCount).toBe(5);
     const zhSearches = (d.searchOpenAlex as ReturnType<typeof vi.fn>).mock.calls
       .map((c) => (c[0] as OpenAlexSearchParams))
@@ -188,9 +236,14 @@ describe("runSearch", () => {
   });
 
   it("builds the broadening ladder from the most essential terms", () => {
-    expect(relaxedQueries("干ばつ イネ 収量")).toEqual(["干ばつ イネ", "干ばつ"]);
-    expect(relaxedQueries("drought rice")).toEqual(["drought"]);
-    expect(relaxedQueries("drought")).toEqual([]);
+    expect(relaxedQueries(["干ばつ", "イネ", "収量"])).toEqual(["干ばつ イネ", "干ばつ"]);
+    expect(relaxedQueries(["drought", "rice"])).toEqual(["drought"]);
+    expect(relaxedQueries(["drought"])).toEqual([]);
+    // Multi-word concepts are never split.
+    expect(relaxedQueries(["contaminación del aire", "asma infantil", "zonas urbanas"])).toEqual([
+      "contaminación del aire asma infantil",
+      "contaminación del aire",
+    ]);
   });
 
   it("falls back to keyword ranking and says so when semantic scoring is unavailable", async () => {
@@ -207,7 +260,7 @@ describe("runSearch", () => {
 describe("expandQuery", () => {
   it("uses only the original query and explains why when no LLM is configured", async () => {
     const res = await expandQuery("How does drought affect rice?", "en", ["zh", "es"], { callLlm: null, model: null });
-    expect(res.variants).toEqual([{ lang: "en", kind: "original", text: "How does drought affect rice?", searchQuery: "drought rice" }]);
+    expect(res.variants).toEqual([{ lang: "en", kind: "original", text: "How does drought affect rice?", concepts: ["drought", "rice"] }]);
     expect(res.notice).toMatch(/unavailable/);
   });
 
@@ -223,14 +276,14 @@ describe("expandQuery", () => {
   it("builds a plan with the original first and sanitized keyword strings", () => {
     const plan = planFromExpansion("drought and rice", "en", ["zh", "ja"], {
       variants: [
-        { lang: "en", translation: "drought and rice", keywords: "drought AND rice" },
-        { lang: "zh", translation: "干旱与水稻", keywords: '"干旱" OR 水稻' },
-        { lang: "ja", translation: "", keywords: "" },
+        { lang: "en", translation: "drought and rice", keywords: ["drought", "AND rice"] },
+        { lang: "zh", translation: "干旱与水稻", keywords: ['"干旱"', "OR 水稻", "干旱"] },
+        { lang: "ja", translation: "", keywords: [] },
       ],
     });
     expect(plan).toEqual([
-      { lang: "en", kind: "original", text: "drought and rice", searchQuery: "drought rice" },
-      { lang: "zh", kind: "translated", text: "干旱与水稻", searchQuery: "干旱 水稻" },
+      { lang: "en", kind: "original", text: "drought and rice", concepts: ["drought", "rice"] },
+      { lang: "zh", kind: "translated", text: "干旱与水稻", concepts: ["干旱", "水稻"] },
     ]);
   });
 });

@@ -88,7 +88,6 @@ export function SearchExperience() {
             yearTo: s.yearTo,
             mode: s.mode,
             limit: s.limit,
-            depth: s.depth,
           },
           controller.signal,
         );
@@ -225,7 +224,6 @@ export function SearchExperience() {
       settings.yearFrom !== response.filters.yearFrom ||
       settings.yearTo !== response.filters.yearTo ||
       settings.limit !== response.filters.limit ||
-      settings.depth !== response.filters.depth ||
       queryLanguage !== response.queryLanguage);
 
   const hasResults = status === "success" && response;
@@ -296,9 +294,9 @@ export function SearchExperience() {
             note={
               caps?.embeddings === "loading"
                 ? "Retrieving papers… the embedding model is still loading on first run."
-                : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking up to ${
-                    (settings.publicationLanguages.length || QUERY_LANGUAGES.length) * settings.depth
-                  } candidates together…`
+                : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages (up to ${
+                    settings.limit
+                  } candidates each), then ranking them all together…`
             }
           />
         )}

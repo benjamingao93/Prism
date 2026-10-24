@@ -33,12 +33,13 @@ Both LLM tasks default to `gemini-3.8-flash` (Google Gemini API, structured JSON
 
 ## How it works
 
-1. **Expand:** Gemini turns the question into 2–5 keyword concepts per language, ordered by importance. The original query is always kept. (`lib/query-expansion.ts`)
-2. **Retrieve:** one OpenAlex `search.title_and_abstract` request per variant, up to 40 candidates each (search depth 20/40/80). Translated variants are restricted to their own `language:` tag. Year and language filters are applied server-side. A sparse query (fewer than 5 hits) is broadened to its two most essential terms, then to the core term (at most two extra requests). (`lib/openalex.ts`, `lib/search.ts`)
-3. **Merge and select:** papers are deduplicated by DOI, then OpenAlex ID, then exact normalized title plus year. Records with conflicting DOIs are never merged. Per-variant provenance is kept. All candidates are ranked together and the top 100 (25/50/100) are returned, with no per-language quota. (`lib/deduplication.ts`, `selectTopResults` in `lib/ranking.ts`)
+1. **Expand:** Gemini turns the question into 2–5 concepts per language (each may be a multi-word term), ordered by importance. The original query is always kept. (`lib/query-expansion.ts`)
+2. **Retrieve:** one OpenAlex `search.title_and_abstract` request per variant, up to as many candidates as the result limit (100 by default), so any single language could fill the whole list. Translated variants are restricted to their own `language:` tag. Year and language filters are applied server-side. A sparse query (fewer than 5 hits) is broadened to its two most essential concepts, then to the core concept (at most two extra requests); phrases are never split. (`lib/openalex.ts`, `lib/search.ts`)
+3. **Merge and select:** papers are deduplicated by DOI, then OpenAlex ID, then exact normalized title plus year. Records with conflicting DOIs are never merged. Per-variant provenance is kept. All candidates are ranked together and the top 100 (25/50/100) are returned. There is no per-language quota at retrieval or in the results. (`lib/deduplication.ts`, `selectTopResults` in `lib/ranking.ts`)
 4. **Score:**
-   - Cosine similarity between the question (the average embedding of the original and all its translations) and each paper's title + abstract, embedded with `paraphrase-multilingual-MiniLM-L12-v2` via Transformers.js. (`lib/embeddings.ts`)
-   - BM25 using ICU word segmentation (handles CJK), taking each paper's best score over all query variants. (`lib/bm25.ts`, `lib/tokenize.ts`)
+   - Two stages when the pool exceeds 3× the limit: a title-only semantic pass plus BM25 shortlists the top 3× under any mode (language-blind), then the shortlist is scored on title + abstract. Text is truncated at 128 tokens, matching the model's reference configuration.
+   - Cosine similarity between the question (the average embedding of the original and all its translations) and each paper's text, taking the better of title alone and title + abstract, so having an abstract never counts against a paper, embedded with `paraphrase-multilingual-MiniLM-L12-v2` via Transformers.js. (`lib/embeddings.ts`)
+   - BM25 using ICU word segmentation (handles CJK), taking each paper's best score over all query variants. Each query's score is divided by its maximum possible score, so every language is scored on the same 0–1 scale instead of rare-in-the-pool languages getting inflated IDF. Length is normalized within title-only and title+abstract groups separately, and scoring uses each language's full concept list even when its search was broadened. (`lib/bm25.ts`, `lib/tokenize.ts`)
    - Hybrid = 0.7 · semantic + 0.3 · keyword after min-max normalization. (`lib/ranking.ts`)
 5. **Explain and present:** explanations come only from computed facts. Translations are labeled and shown next to the original. Coverage stats and the baseline comparison are computed from the actual result set. (`lib/comparison.ts`)
 
@@ -86,9 +87,10 @@ npm run check:embeddings  # cross-language similarity sanity check
 - Coverage is limited to OpenAlex. Regional journals, theses and non-DOI literature are underrepresented.
 - OpenAlex language tags are machine-detected and sometimes wrong. Some `zh`-tagged works have English-only metadata.
 - Many records lack abstracts. Those are scored on titles only and labeled as such.
-- Each language contributes at most 20–80 candidates (the search depth), so results are a sample, not an exhaustive search.
+- Each language contributes at most 100 candidates (OpenAlex's top matches in that language), so results are a sample, not an exhaustive search.
+- Large pools are shortlisted by title before full scoring; a paper with an uninformative title can occasionally miss the shortlist.
 - Many records in some languages (notably Japanese) have no abstract in OpenAlex; they are ranked on titles alone and labeled.
-- A fresh search ranks several hundred candidates on the CPU and takes roughly 10–20 seconds; repeats are cached.
+- A fresh search ranks up to ~1,500 candidates on the CPU and typically takes 10–20 seconds; repeats are cached.
 - Machine-translated queries can shift technical meaning. Every variant is shown in the UI.
 - Ranking is multilingual but not perfectly language-neutral (see the Japanese similarity above).
 - The in-memory caches reset when the server restarts. The reading list lives in browser `localStorage`.

@@ -15,8 +15,7 @@ export const PUBLICATION_LANGUAGES = QUERY_LANGUAGES;
 
 /** How many top-ranked papers to return, across all languages combined. */
 export const RESULT_LIMITS = [25, 50, 100] as const;
-/** How many candidates to retrieve per language before ranking. */
-export const SEARCH_DEPTHS = [20, 40, 80] as const;
+
 
 export const RANKING_MODES = ["hybrid", "semantic", "keyword"] as const;
 export type RankingMode = (typeof RANKING_MODES)[number];
@@ -32,10 +31,11 @@ export const SearchRequestSchema = z
     yearFrom: z.number().int().min(1800).max(2100).nullable().default(null),
     yearTo: z.number().int().min(1800).max(2100).nullable().default(null),
     mode: z.enum(RANKING_MODES).default("hybrid"),
-    /** Top-N papers returned overall, ranked across all languages (no per-language quota). */
+    /**
+     * Top-N papers returned overall, ranked across all languages. Each language may also supply
+     * up to N candidates, so no language is capped below what it would take to fill the list.
+     */
     limit: z.number().int().min(5).max(100).default(100),
-    /** Candidates retrieved per language variant; the ranking pool is the union of these. */
-    depth: z.number().int().min(5).max(100).default(40),
   })
   .refine((r) => r.yearFrom == null || r.yearTo == null || r.yearFrom <= r.yearTo, {
     message: "Start year must be before end year",
@@ -83,8 +83,10 @@ export interface QueryVariant {
   kind: "original" | "translated";
   /** Natural-language text: the user's query, or its machine translation. */
   text: string;
-  /** Keyword-form string actually sent to the search API. */
+  /** Keyword-form string actually sent to the search API (may be a broadened subset of `concepts`). */
   searchQuery: string;
+  /** All core concepts for this language, most essential first. Keyword scoring uses all of them. */
+  concepts: string[];
   source: PaperSource;
   /** True when the strict query returned too few hits and a relaxed OR query was used. */
   relaxed: boolean;
@@ -99,7 +101,7 @@ export interface ScoreBreakdown {
   semanticRaw: number | null;
   /** Min-max normalized semantic score within this result set. */
   semantic: number | null;
-  /** Raw BM25 score (max over query variants). */
+  /** BM25 as a share of an ideal match to the best query variant (0–1, comparable across languages). */
   keywordRaw: number;
   /** Min-max normalized BM25 score within this result set. */
   keyword: number;
@@ -142,7 +144,6 @@ export interface SearchResponse {
     yearFrom: number | null;
     yearTo: number | null;
     limit: number;
-    depth: number;
   };
   variants: QueryVariant[];
   /** Unique candidates ranked (after deduplication), before taking the top `limit`. */

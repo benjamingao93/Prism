@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { languageLabel } from "@/lib/languages";
-import { PUBLICATION_LANGUAGES, RESULT_LIMITS, SEARCH_DEPTHS, type RankingMode } from "@/lib/types";
+import { PUBLICATION_LANGUAGES, RESULT_LIMITS, type RankingMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { MODE_DESCRIPTIONS, RankingModeToggle } from "./RankingInfo";
 
@@ -17,10 +17,8 @@ export interface SearchSettingsValue {
   yearFrom: number | null;
   yearTo: number | null;
   mode: RankingMode;
-  /** Top-N results across all languages. */
+  /** Top-N results across all languages; also the most candidates any one language may supply. */
   limit: number;
-  /** Candidates retrieved per language before ranking. */
-  depth: number;
   minScore: number;
   translate: boolean;
   compare: boolean;
@@ -32,7 +30,6 @@ export const DEFAULT_SETTINGS: SearchSettingsValue = {
   yearTo: null,
   mode: "hybrid",
   limit: 100,
-  depth: 40,
   minScore: 0,
   translate: true,
   compare: false,
@@ -93,8 +90,7 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
   const allLanguages = value.publicationLanguages.length === 0;
   const activeCount =
     (allLanguages ? 0 : 1) + (value.yearFrom || value.yearTo ? 1 : 0) + (value.minScore > 0 ? 1 : 0) +
-    (value.limit !== DEFAULT_SETTINGS.limit ? 1 : 0) +
-    (value.depth !== DEFAULT_SETTINGS.depth ? 1 : 0);
+    (value.limit !== DEFAULT_SETTINGS.limit ? 1 : 0);
 
   const toggleLang = (code: string, checked: boolean) => {
     const next = checked ? [...value.publicationLanguages, code] : value.publicationLanguages.filter((c) => c !== code);
@@ -167,16 +163,10 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
                   value={value.limit}
                   onChange={(n) => set("limit", n)}
                 />
-                <p className="text-xs text-muted-foreground">Most relevant across all languages, with no per-language quota.</p>
-              </fieldset>
-              <fieldset className="space-y-2">
-                <legend className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Search depth</legend>
-                <Segmented
-                  options={SEARCH_DEPTHS.map((n, i) => [n, ["Fast", "Standard", "Deep"][i]])}
-                  value={value.depth}
-                  onChange={(n) => set("depth", n)}
-                />
-                <p className="text-xs text-muted-foreground">{value.depth} candidates per language are ranked together. Deeper is slower.</p>
+                <p className="text-xs text-muted-foreground">
+                  The most relevant papers overall. Every language may supply up to {value.limit} candidates, so any language could
+                  fill the whole list; ranking alone decides the mix.
+                </p>
               </fieldset>
               <div className="space-y-2">
                 <Label htmlFor="min-score" className="text-xs font-medium tracking-wide text-muted-foreground uppercase">

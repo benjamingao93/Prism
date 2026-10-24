@@ -62,7 +62,7 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, topCou
         </Chip>
         <Chip>{f.yearFrom || f.yearTo ? `Years ${f.yearFrom ?? "…"}–${f.yearTo ?? "…"}` : "Any year"}</Chip>
         <Chip>Top {f.limit} overall</Chip>
-        <Chip>{f.depth} candidates per language</Chip>
+        <Chip>Up to {f.limit} candidates per language</Chip>
         {minScore > 0 && <Chip>Min score {minScore.toFixed(2)}</Chip>}
         {refine.length > 0 && (
           <button
@@ -75,7 +75,8 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, topCou
         )}
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Results are the most relevant candidates across all languages — no language has a fixed quota. Scores compare papers
+        Every language could supply up to {f.limit} candidates, and the top {f.limit} are chosen by relevance alone, so the language
+        mix reflects the literature rather than a quota. Scores compare papers
         within this candidate pool and are not judgments of scientific quality. This is a sample of OpenAlex records, not an
         exhaustive search.
       </p>

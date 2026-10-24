@@ -27,8 +27,8 @@ function paper(id: string, title: string, abstract: string | null, language = "e
 }
 
 const variants: QueryVariant[] = [
-  { id: "v-en", lang: "en", kind: "original", text: "drought stress rice yield", searchQuery: "drought stress rice yield", source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, error: null, skipped: null },
-  { id: "v-zh", lang: "zh", kind: "translated", text: "干旱胁迫对水稻产量的影响", searchQuery: "干旱 水稻 产量", source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, error: null, skipped: null },
+  { id: "v-en", lang: "en", kind: "original", text: "drought stress rice yield", searchQuery: "drought stress rice yield", concepts: ["drought", "stress", "rice", "yield"], source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, error: null, skipped: null },
+  { id: "v-zh", lang: "zh", kind: "translated", text: "干旱胁迫对水稻产量的影响", searchQuery: "干旱 水稻 产量", concepts: ["干旱", "水稻", "产量"], source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, error: null, skipped: null },
 ];
 
 describe("tokenize", () => {
@@ -63,6 +63,34 @@ describe("bm25Scores", () => {
     expect(scores.get("zh")!.score).toBeGreaterThan(0);
     expect(scores.get("zh")!.matchedTerms).toEqual(["干旱", "水稻", "产量"]);
     expect(scores.get("off")!.score).toBe(0);
+  });
+});
+
+describe("bm25Scores fairness across languages", () => {
+  const filler = "observational cohort children city exposure measured hospital visits seasonal model results";
+
+  it("gives an equally good match the same score whatever its language's share of the pool", () => {
+    // 20 English papers that all contain the English query terms, and a single Indonesian one.
+    const english = Array.from({ length: 20 }, (_, i) => ({ id: `en${i}`, text: `air pollution childhood asthma ${filler} ${i}` }));
+    const indonesian = { id: "id0", text: "polusi udara asma anak observasi kohort kota paparan rumah sakit musiman model hasil" };
+    const scores = bm25Scores([...english, indonesian], ["air pollution childhood asthma", "polusi udara asma anak"]);
+    // Both match every term of their own-language query once, in texts of similar length.
+    expect(scores.get("id0")!.score).toBeCloseTo(scores.get("en0")!.score, 1);
+    expect(scores.get("id0")!.score).toBeLessThanOrEqual(1);
+  });
+
+  it("does not treat a bare title as a denser match than an abstract with the same terms", () => {
+    const docs = [
+      { id: "title-only", text: "air pollution and childhood asthma", group: "title" },
+      { id: "other-title", text: "noise and sleep in adults", group: "title" },
+      { id: "with-abstract", text: `air pollution and childhood asthma. ${filler} ${filler}`, group: "title+abstract" },
+      { id: "other-abstract", text: `noise and sleep in adults. ${filler} ${filler}`, group: "title+abstract" },
+    ];
+    const s = bm25Scores(docs, ["air pollution childhood asthma"]);
+    expect(Math.abs(s.get("title-only")!.score - s.get("with-abstract")!.score)).toBeLessThan(0.05);
+    // Without grouping, length normalization would rate the bare title as a far denser match.
+    const ungrouped = bm25Scores(docs.map(({ id, text }) => ({ id, text })), ["air pollution childhood asthma"]);
+    expect(ungrouped.get("title-only")!.score).toBeGreaterThan(ungrouped.get("with-abstract")!.score * 1.5);
   });
 });
 
@@ -144,6 +172,20 @@ describe("scorePapers and ranking modes", () => {
     expect(ids).toContain(sortByMode(ranked, "keyword")[0].id);
     expect(ids).toContain("A");
     expect(ids).not.toContain("C");
+  });
+
+  it("scores keywords against all concepts, not a broadened search string", () => {
+    const broadened: QueryVariant[] = [
+      variants[0],
+      { ...variants[1], searchQuery: "水稻", relaxed: true, concepts: ["水稻", "干旱", "产量"] },
+    ];
+    const ranked = scorePapers({
+      papers: [paper("full", "干旱 水稻 产量", null, "zh"), paper("broad-only", "水稻 栽培 技术", null, "zh")],
+      variants: broadened,
+      semantic: null,
+    });
+    const kw = Object.fromEntries(ranked.map((p) => [p.id, p.scores.keywordRaw]));
+    expect(kw["full"]).toBeGreaterThan(kw["broad-only"] * 2);
   });
 
   it("never uses publication language in the score", () => {

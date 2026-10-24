@@ -1,4 +1,4 @@
-import { bm25Scores } from "./bm25";
+import { bm25Scores, type Bm25Result } from "./bm25";
 import { languageName } from "./languages";
 import type { Explanation, Paper, QueryVariant, RankedPaper, RankingMode, ScoreBreakdown } from "./types";
 
@@ -39,16 +39,27 @@ export interface ScoringInput {
   variants: QueryVariant[];
   /** Cosine similarity per paper id; omit when semantic ranking is unavailable. */
   semantic?: Map<string, number> | null;
+  /** Precomputed BM25 results (e.g. over a larger pool); computed over `papers` when omitted. */
+  bm25?: Map<string, Bm25Result>;
 }
 
-export function scorePapers({ papers, variants, semantic }: ScoringInput): RankedPaper[] {
+/** BM25 of each paper against the original query and every translated variant. */
+export function keywordScores(papers: Paper[], variants: QueryVariant[]): Map<string, Bm25Result> {
   const queries = variants
     .filter((v) => !v.skipped)
-    .flatMap((v) => (v.text === v.searchQuery ? [v.text] : [v.text, v.searchQuery]));
-  const bm25 = bm25Scores(
-    papers.map((p) => ({ id: p.id, text: paperText(p) })),
+    // All concepts, not the (possibly broadened) string that was sent to the search API.
+    .flatMap((v) => {
+      const concepts = v.concepts.join(" ");
+      return v.text === concepts ? [v.text] : [v.text, concepts];
+    });
+  return bm25Scores(
+    papers.map((p) => ({ id: p.id, text: paperText(p), group: p.abstract ? "title+abstract" : "title" })),
     queries,
   );
+}
+
+export function scorePapers({ papers, variants, semantic, bm25: precomputed }: ScoringInput): RankedPaper[] {
+  const bm25 = precomputed ?? keywordScores(papers, variants);
 
   const keywordRaw = papers.map((p) => bm25.get(p.id)?.score ?? 0);
   const keywordNorm = minMax(keywordRaw);

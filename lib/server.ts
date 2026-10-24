@@ -64,7 +64,7 @@ export function searchDeps(): SearchDeps {
       ? (params: CrossrefSearchParams) =>
           cached("crossref", params, () => searchCrossref(params, e.CROSSREF_MAILTO ?? e.OPENALEX_MAILTO))
       : null,
-    semantic: (queryTexts, papers) => semanticScores(queryTexts, papers),
+    semantic: (queryTexts, papers, field) => semanticScores(queryTexts, papers, { field }),
     capabilities,
   };
 }

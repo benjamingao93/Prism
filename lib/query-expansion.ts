@@ -8,7 +8,8 @@ export interface PlannedVariant {
   lang: QueryLanguage;
   kind: "original" | "translated";
   text: string;
-  searchQuery: string;
+  /** Core concepts, most essential first; each may be several words ("contaminación del aire"). */
+  concepts: string[];
 }
 
 export interface ExpansionResult {
@@ -23,7 +24,7 @@ export const ExpansionSchema = z.object({
     z.object({
       lang: z.enum(QUERY_LANGUAGES),
       translation: z.string(),
-      keywords: z.string(),
+      keywords: z.array(z.string()),
     }),
   ),
 });
@@ -32,7 +33,8 @@ export type ExpansionOutput = z.infer<typeof ExpansionSchema>;
 const SYSTEM = `You help researchers search scholarly databases (OpenAlex) across languages.
 Given a research question, produce for each requested language:
 - "translation": a faithful natural-language translation of the question. For the question's own language, repeat the question unchanged.
-- "keywords": 2–5 core concepts as they would appear in titles and abstracts of scientific papers written in that language, separated by single spaces and ordered from most to least essential. Use the standard technical terminology of that language's literature. No boolean operators, quotes, or punctuation. For Chinese and Japanese, separate terms with spaces and prefer short, common terms of 2–4 characters: split long compounds (write 海洋 生态 rather than 海洋生态系统), because the search index only matches whole terms.
+- "keywords": an array of 2–5 core concepts as they would appear in titles and abstracts of scientific papers written in that language, ordered from most to least essential. Each concept is one array item and may be a multi-word term (for example "air pollution" or "contaminación del aire"); never split one concept across items. Use the standard technical terminology of that language's literature. No boolean operators, quotes, or punctuation. For Chinese and Japanese, prefer short, common terms of 2–4 characters and split long compounds into separate items (海洋, 生态 rather than 海洋生态系统), because the search index only matches whole terms.
+Produce the same concepts, in the same order, for every language.
 Do not add concepts that are not in the question. Do not answer the question.`;
 
 export function buildExpansionPrompt(query: string, source: QueryLanguage, targets: QueryLanguage[]): string {
@@ -40,15 +42,26 @@ export function buildExpansionPrompt(query: string, source: QueryLanguage, targe
   return `Question language: ${source} (${languageName(source)})\nLanguages to produce: ${langs}\n\nResearch question:\n${query}`;
 }
 
-const MAX_KEYWORD_CHARS = 120;
+const MAX_CONCEPTS = 5;
+const MAX_CONCEPT_CHARS = 60;
 
-function cleanKeywords(raw: string): string {
-  return raw
-    .replace(/["“”()]/g, " ")
-    .replace(/\b(AND|OR|NOT)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_KEYWORD_CHARS);
+function cleanConcepts(raw: string[]): string[] {
+  const out = raw
+    .map((c) =>
+      c
+        .replace(/["“”()]/g, " ")
+        .replace(/\b(AND|OR|NOT)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, MAX_CONCEPT_CHARS),
+    )
+    .filter(Boolean);
+  return [...new Set(out)].slice(0, MAX_CONCEPTS);
+}
+
+/** Concepts from plain text when no LLM is available: each content word is a concept. */
+export function conceptsFromQuery(query: string): string[] {
+  return extractKeywords(query).split(" ").filter(Boolean);
 }
 
 /** Turn LLM output into a validated variant plan; the original query is always first. */
@@ -59,15 +72,17 @@ export function planFromExpansion(
   output: ExpansionOutput,
 ): PlannedVariant[] {
   const byLang = new Map(output.variants.map((v) => [v.lang, v]));
-  const originalKeywords = cleanKeywords(byLang.get(source)?.keywords ?? "") || extractKeywords(query);
-  const plan: PlannedVariant[] = [{ lang: source, kind: "original", text: query, searchQuery: originalKeywords }];
+  const originalConcepts = cleanConcepts(byLang.get(source)?.keywords ?? []);
+  const plan: PlannedVariant[] = [
+    { lang: source, kind: "original", text: query, concepts: originalConcepts.length ? originalConcepts : conceptsFromQuery(query) },
+  ];
   for (const lang of targets) {
     if (lang === source) continue;
     const v = byLang.get(lang);
-    const keywords = v ? cleanKeywords(v.keywords) : "";
+    const concepts = v ? cleanConcepts(v.keywords) : [];
     const translation = v?.translation.trim() ?? "";
-    if (!keywords || !translation) continue;
-    plan.push({ lang, kind: "translated", text: translation.slice(0, 500), searchQuery: keywords });
+    if (!concepts.length || !translation) continue;
+    plan.push({ lang, kind: "translated", text: translation.slice(0, 500), concepts });
   }
   return plan;
 }
@@ -87,7 +102,7 @@ export async function expandQuery(
   deps: ExpandDeps,
 ): Promise<ExpansionResult> {
   const fallback = (notice: string): ExpansionResult => ({
-    variants: [{ lang: source, kind: "original", text: query, searchQuery: extractKeywords(query) }],
+    variants: [{ lang: source, kind: "original", text: query, concepts: conceptsFromQuery(query) }],
     notice,
     model: null,
   });

@@ -89,8 +89,8 @@ function RelevanceMeter({ paper, mode }: { paper: RankedPaper; mode: RankingMode
           <dd>{s.semanticRaw != null ? s.semanticRaw.toFixed(3) : "unavailable"}</dd>
           <dt>Semantic (normalized)</dt>
           <dd>{s.semantic != null ? s.semantic.toFixed(3) : "–"}</dd>
-          <dt>BM25 raw</dt>
-          <dd>{s.keywordRaw.toFixed(2)}</dd>
+          <dt>BM25 (share of ideal match)</dt>
+          <dd>{s.keywordRaw.toFixed(3)}</dd>
           <dt>Keyword (normalized)</dt>
           <dd>{s.keyword.toFixed(3)}</dd>
           <dt>Hybrid</dt>
