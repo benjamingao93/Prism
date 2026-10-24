@@ -32,7 +32,7 @@ export async function summarizeAbstract(input: {
   const out = await structuredCall(SummarySchema, {
     model,
     maxTokens: 4000,
-    effort: "low",
+    thinking: "low",
     timeoutMs: 60_000,
     system: `You summarize scientific paper abstracts for researchers. You only have the title and abstract — not the full paper.
 Write each field in ${languageName(input.targetLang)}, in one or two plain sentences.

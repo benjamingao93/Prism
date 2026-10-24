@@ -172,7 +172,7 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
                 <Switch checked={value.translate && llmAvailable} disabled={!llmAvailable} onCheckedChange={(c) => set("translate", c)} />
                 Show machine-translated titles &amp; abstracts
               </label>
-              {!llmAvailable && <p className="pl-11 text-xs text-muted-foreground">Requires ANTHROPIC_API_KEY on the server.</p>}
+              {!llmAvailable && <p className="pl-11 text-xs text-muted-foreground">Requires GEMINI_API_KEY on the server.</p>}
               <label className="flex items-center gap-2.5 text-sm">
                 <Switch checked={value.compare} onCheckedChange={(c) => set("compare", c)} />
                 Compare with original-language-only search

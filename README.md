@@ -10,7 +10,7 @@ All results are live OpenAlex records. The app contains no demo data, and missin
 
 ```bash
 npm install
-cp .env.example .env.local   # optional: add ANTHROPIC_API_KEY and OPENALEX_API_KEY
+cp .env.example .env.local   # optional: add GEMINI_API_KEY and OPENALEX_API_KEY
 npm run dev                  # http://localhost:3000
 ```
 
@@ -23,17 +23,17 @@ On first start the server downloads the multilingual embedding model (~120 MB) i
 | OpenAlex retrieval | Works. Keyless budget is $0.10/day, shared per IP (~100 searches) | `OPENALEX_API_KEY` (free, 10× budget) |
 | Multilingual semantic ranking | Works (local model) | on by default; `EMBEDDINGS_ENABLED=false` disables |
 | Keyword (BM25) ranking | Works | none needed |
-| Cross-language query expansion | **Off.** Only the original query is searched, with a notice | `ANTHROPIC_API_KEY` |
-| Title/abstract translation, abstract summaries | **Off.** Controls are disabled with an explanation | `ANTHROPIC_API_KEY` |
+| Cross-language query expansion | **Off.** Only the original query is searched, with a notice | `GEMINI_API_KEY` |
+| Title/abstract translation, abstract summaries | **Off.** Controls are disabled with an explanation | `GEMINI_API_KEY` |
 | Crossref supplementary results | Off | `CROSSREF_ENABLED=true` |
 
 Each search makes up to 5 OpenAlex keyword searches, one per language. Source responses are cached in memory for 24 hours.
 
-Models default to `claude-haiku-5-5` for expansion and translation and `claude-sonnet-5-5` for summaries. Override them with `LLM_MODEL_FAST` / `LLM_MODEL_SUMMARY`.
+Both LLM tasks default to `gemini-3.8-flash` (Google Gemini API, structured JSON output). Override them with `LLM_MODEL_FAST` / `LLM_MODEL_SUMMARY`.
 
 ## How it works
 
-1. **Expand:** Claude turns the question into 2–5 keyword concepts per language, ordered by importance. The original query is always kept. (`lib/query-expansion.ts`)
+1. **Expand:** Gemini turns the question into 2–5 keyword concepts per language, ordered by importance. The original query is always kept. (`lib/query-expansion.ts`)
 2. **Retrieve:** one OpenAlex `search.title_and_abstract` request per variant. Translated variants are restricted to their own `language:` tag. Year and language filters are applied server-side. A sparse query (fewer than 5 hits) is retried once without its least essential term. (`lib/openalex.ts`, `lib/search.ts`)
 3. **Merge:** papers are deduplicated by DOI, then OpenAlex ID, then exact normalized title plus year. Records with conflicting DOIs are never merged. Per-variant provenance is kept. (`lib/deduplication.ts`)
 4. **Score:**

@@ -10,7 +10,7 @@ const SOURCES = [
     "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "Multilingual sentence embeddings, run locally via Transformers.js (ONNX).",
   ],
-  ["Claude (Anthropic)", "https://www.anthropic.com", "Query expansion, translation and abstract summaries, when an API key is configured."],
+  ["Gemini (Google)", "https://ai.google.dev", "Query expansion, translation and abstract summaries, when an API key is configured."],
 ] as const;
 
 export default function About() {

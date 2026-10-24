@@ -40,7 +40,7 @@ export default function HowItWorks() {
       <div className="mt-8">
         <Step n={1} title="Expand the question across languages">
           <p>
-            A language model (Claude, when configured) turns your question into short keyword queries in Chinese, Spanish, Japanese,
+            A language model (Gemini, when configured) turns your question into short keyword queries in Chinese, Spanish, Japanese,
             Portuguese and English, using the terminology papers in each language tend to use. Your original question is always kept and
             searched too.
           </p>

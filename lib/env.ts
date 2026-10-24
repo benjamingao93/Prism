@@ -13,9 +13,9 @@ const optionalString = z
   .transform((v) => (v && v.trim() ? v.trim() : null));
 
 const EnvSchema = z.object({
-  ANTHROPIC_API_KEY: optionalString,
-  LLM_MODEL_FAST: z.string().default("claude-haiku-5-5"),
-  LLM_MODEL_SUMMARY: z.string().default("claude-sonnet-5-5"),
+  GEMINI_API_KEY: optionalString,
+  LLM_MODEL_FAST: z.string().default("gemini-3.8-flash"),
+  LLM_MODEL_SUMMARY: z.string().default("gemini-3.8-flash"),
   OPENALEX_API_KEY: optionalString,
   OPENALEX_MAILTO: optionalString,
   CROSSREF_ENABLED: bool(false),

@@ -25,7 +25,7 @@ export function CapabilityNotices({ caps }: { caps: Capabilities | null }) {
       {!caps.llm && (
         <Notice tone="warning">
           Cross-language query expansion and translation are off because no LLM is configured. Searches use your original query only.
-          Set <code className="font-mono">ANTHROPIC_API_KEY</code> on the server to enable them.
+          Set <code className="font-mono">GEMINI_API_KEY</code> on the server to enable them.
         </Notice>
       )}
       {caps.embeddings === "loading" && (

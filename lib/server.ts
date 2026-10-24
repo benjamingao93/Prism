@@ -43,7 +43,7 @@ export function searchDeps(): SearchDeps {
         model: e.LLM_MODEL_FAST,
         callLlm: llmConfigured()
           ? (system, prompt) =>
-              structuredCall(ExpansionSchema, { model: e.LLM_MODEL_FAST, system, prompt, maxTokens: 2000, effort: "low", timeoutMs: 20_000 })
+              structuredCall(ExpansionSchema, { model: e.LLM_MODEL_FAST, system, prompt, maxTokens: 2000, thinking: "low", timeoutMs: 20_000 })
           : null,
       }),
     searchOpenAlex: (params: OpenAlexSearchParams) =>
@@ -67,7 +67,7 @@ export function translate(req: TranslateRequest) {
       system,
       prompt,
       maxTokens: 16_000,
-      effort: "low",
+      thinking: "minimal",
       timeoutMs: 60_000,
     }),
   );

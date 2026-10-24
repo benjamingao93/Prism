@@ -9,7 +9,7 @@ export const maxDuration = 90;
 export async function POST(request: Request) {
   if (!llmConfigured()) {
     return errorResponse(503, {
-      error: "Translation is unavailable: no LLM is configured (set ANTHROPIC_API_KEY).",
+      error: "Translation is unavailable: no LLM is configured (set GEMINI_API_KEY).",
       code: "llm_unavailable",
     });
   }

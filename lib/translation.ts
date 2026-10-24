@@ -32,9 +32,9 @@ export const TranslationSchema = z.object({
   items: z.array(
     z.object({
       id: z.string(),
-      title: z.string().nullable(),
+      title: z.string(),
       title_already_in_target: z.boolean(),
-      abstract: z.string().nullable(),
+      abstract: z.string(),
       abstract_already_in_target: z.boolean(),
     }),
   ),
@@ -45,7 +45,7 @@ export function translationSystemPrompt(target: QueryLanguage): string {
   return `You translate scholarly metadata into ${languageName(target)} for researchers.
 Translate faithfully and completely. Preserve technical terms, species names, gene names, chemical formulas, numbers, units, and statistics exactly. Do not summarize, add, explain, or omit information.
 If a field is already written in ${languageName(target)}, return it unchanged and set its *_already_in_target flag to true.
-If a field is null, return null for it.`;
+If a field is null in the input, return an empty string for it.`;
 }
 
 type CacheEntry = { text: string | null; already: boolean };
@@ -97,12 +97,12 @@ export async function translateItems(req: TranslateRequest, callLlm: TranslateFn
       if (!got) continue;
       if (p.title) {
         out.titleAlreadyInTarget = got.title_already_in_target;
-        out.title = got.title_already_in_target ? null : (got.title?.trim() || null);
+        out.title = got.title_already_in_target ? null : (got.title.trim() || null);
         cache.set(ckey(p.id, "title", target, p.title), { text: out.title, already: out.titleAlreadyInTarget });
       }
       if (p.abstract) {
         out.abstractAlreadyInTarget = got.abstract_already_in_target;
-        out.abstract = got.abstract_already_in_target ? null : (got.abstract?.trim() || null);
+        out.abstract = got.abstract_already_in_target ? null : (got.abstract.trim() || null);
         cache.set(ckey(p.id, "abstract", target, p.abstract), { text: out.abstract, already: out.abstractAlreadyInTarget });
       }
     }
