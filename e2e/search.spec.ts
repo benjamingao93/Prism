@@ -85,7 +85,7 @@ test("search, switch ranking modes, and filter by language", async ({ page }) =>
 
   await expect(page.getByTestId("paper-card")).toHaveCount(3);
   expect(lastBody).toMatchObject({ query: "How does drought affect rice?", queryLanguage: "en", mode: "hybrid", limit: 100 });
-  await expect(page.getByText("of 3 candidates from OpenAlex", { exact: false })).toBeVisible();
+  await expect(page.getByText("of 3 candidates (from 3 retrieved)", { exact: false })).toBeVisible();
 
   // Hybrid order: C (0.66) > B (0.57) > A (0.51)
   expect((await titles(page))[0]).toContain("Gamma");
