@@ -164,8 +164,8 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
                   onChange={(n) => set("limit", n)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  The most relevant papers overall. Every language may supply up to {value.limit} candidates, so any language could
-                  fill the whole list; ranking alone decides the mix.
+                  The most relevant papers overall. Candidates come from each language in proportion to its matching literature,
+                  then ranking alone decides the mix.
                 </p>
               </fieldset>
               <div className="space-y-2">

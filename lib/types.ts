@@ -90,8 +90,18 @@ export interface QueryVariant {
   source: PaperSource;
   /** True when the strict query returned too few hits and a relaxed OR query was used. */
   relaxed: boolean;
+  /** Candidates retrieved for this variant. */
   hitCount: number;
   totalAvailable: number | null;
+  /** Distinctive subject term used to size this language's literature. */
+  topic: string;
+  /**
+   * Estimated size of this language's literature on the topic: OpenAlex works in this language
+   * matching any language's topic term. Drives proportional candidate allocation.
+   */
+  matchCount: number | null;
+  /** Candidates kept for ranking after proportional allocation. */
+  kept: number;
   error: string | null;
   skipped: string | null;
 }
@@ -146,8 +156,12 @@ export interface SearchResponse {
     limit: number;
   };
   variants: QueryVariant[];
-  /** Unique candidates ranked (after deduplication), before taking the top `limit`. */
+  /** Unique candidates ranked (after allocation and deduplication), before taking the top `limit`. */
   candidateCount: number;
+  /** Candidates retrieved across all variants, before proportional allocation. */
+  retrievedCount: number;
+  /** Where the literature-size estimate came from. */
+  literatureEstimate: "topic" | "overall";
   /**
    * The top `limit` papers under every available ranking mode (their union), plus the
    * original-query baseline's top papers, so switching modes client-side stays exact.

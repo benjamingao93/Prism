@@ -74,7 +74,11 @@ export function SearchCoverage({ coverage, candidateCount, variants, refine, onT
       </ul>
       <p className="mt-1.5 text-[11px] text-muted-foreground">Click a language to filter the results shown.</p>
 
-      <h3 className="mt-4 mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Query variants</h3>
+      <h3 className="mt-4 mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">Query variants</h3>
+      <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+        Candidates are drawn from each language in proportion to the size of its literature on the topic (at least 2), then
+        ranked together. “~N” is that estimated size.
+      </p>
       <ul className="space-y-1.5">
         {variants.map((v) => (
           <li key={v.id} className="text-xs">
@@ -90,8 +94,15 @@ export function SearchCoverage({ coverage, candidateCount, variants, refine, onT
                 {v.kind === "original" ? `Original · ${languageName(v.lang)}` : languageName(v.lang)}
                 {v.source === "crossref" && " · Crossref"}
               </span>
-              <span className="tabular ml-auto text-muted-foreground">
-                {v.skipped ? "skipped" : v.error ? "failed" : `${v.hitCount} candidates`}
+              <span
+                className="tabular ml-auto text-muted-foreground"
+                title={`Candidates ranked · estimated papers on “${v.topic}” in this language`}
+              >
+                {v.skipped
+                  ? "skipped"
+                  : v.error
+                    ? "failed"
+                    : `${v.kept} ranked${v.matchCount != null ? ` of ~${v.matchCount.toLocaleString("en")}` : ""}`}
               </span>
             </div>
             <p className="mt-0.5 truncate pl-5 text-muted-foreground" lang={v.lang} title={v.text}>

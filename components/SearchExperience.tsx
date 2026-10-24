@@ -294,9 +294,7 @@ export function SearchExperience() {
             note={
               caps?.embeddings === "loading"
                 ? "Retrieving papers… the embedding model is still loading on first run."
-                : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages (up to ${
-                    settings.limit
-                  } candidates each), then ranking them all together…`
+                : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking candidates from each in proportion to its literature…`
             }
           />
         )}

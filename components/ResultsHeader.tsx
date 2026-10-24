@@ -35,7 +35,8 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, topCou
             {response.query}
           </h2>
           <p className="tabular mt-1 text-sm text-muted-foreground" aria-live="polite">
-            Top <span className="font-medium text-foreground">{topCount}</span> of {response.candidateCount} candidates from{" "}
+            Top <span className="font-medium text-foreground">{topCount}</span> of {response.candidateCount} candidates (from{" "}
+            {response.retrievedCount} retrieved) from{" "}
             {sources.map((s) => (s === "openalex" ? "OpenAlex" : "Crossref")).join(" and ") || "no sources"}, searched with your query
             {translatedCount > 0 && <> and {translatedCount} translations</>}
             {shownCount !== topCount && <> · {shownCount} shown</>} ·{" "}
@@ -62,7 +63,7 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, topCou
         </Chip>
         <Chip>{f.yearFrom || f.yearTo ? `Years ${f.yearFrom ?? "…"}–${f.yearTo ?? "…"}` : "Any year"}</Chip>
         <Chip>Top {f.limit} overall</Chip>
-        <Chip>Up to {f.limit} candidates per language</Chip>
+
         {minScore > 0 && <Chip>Min score {minScore.toFixed(2)}</Chip>}
         {refine.length > 0 && (
           <button
@@ -75,8 +76,9 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, topCou
         )}
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Every language could supply up to {f.limit} candidates, and the top {f.limit} are chosen by relevance alone, so the language
-        mix reflects the literature rather than a quota. Scores compare papers
+        Candidates are drawn from each language in proportion to the size of its literature on the topic
+        {response.literatureEstimate === "overall" ? " (estimated from each language’s overall share of OpenAlex)" : ""}, then the top{" "}
+        {f.limit} are chosen by relevance alone, so the language mix reflects where the research is. Scores compare papers
         within this candidate pool and are not judgments of scientific quality. This is a sample of OpenAlex records, not an
         exhaustive search.
       </p>

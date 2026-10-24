@@ -3,18 +3,22 @@ import { mergePapers } from "./deduplication";
 import { filterPapers } from "./filters";
 import { UpstreamError } from "./http";
 import { languageName } from "./languages";
-import type { OpenAlexSearchParams, SearchResult } from "./openalex";
+import { orQuery, type OpenAlexSearchParams, type SearchResult } from "./openalex";
+import { OPENALEX_WORKS_BY_LANGUAGE } from "./literature";
 import type { ExpansionResult } from "./query-expansion";
 import { availableModes, HYBRID_WEIGHTS, keywordScores, resolveMode, scorePapers, selectTopResults } from "./ranking";
 import type { Capabilities, Paper, QueryLanguage, QueryVariant, SearchRequest, SearchResponse } from "./types";
 import { QUERY_LANGUAGES } from "./types";
 
 export type SearchOpenAlexFn = (params: OpenAlexSearchParams) => Promise<SearchResult>;
+export type CountByLanguageFn = (params: { search: string; yearFrom: number | null; yearTo: number | null }) => Promise<Record<string, number>>;
 export type SearchCrossrefFn = (params: CrossrefSearchParams) => Promise<SearchResult>;
 
 export interface SearchDeps {
   expand: (query: string, source: QueryLanguage, targets: QueryLanguage[]) => Promise<ExpansionResult>;
   searchOpenAlex: SearchOpenAlexFn;
+  /** Works per language matching an OR of topic terms (one request); null to skip. */
+  countByLanguage: CountByLanguageFn | null;
   searchCrossref: SearchCrossrefFn | null;
   /**
    * Cosine similarity per paper id against the question (given as the original text plus its
@@ -47,6 +51,37 @@ export const COMPARISON_K = 10;
  * signal than title + abstract, so the shortlist keeps a generous margin.
  */
 export const SHORTLIST_FACTOR = 3;
+
+/**
+ * Each language's best few matches are always considered, so a strong paper from a small
+ * literature can still compete; it is shown only if it outranks the alternatives.
+ */
+export const MIN_CANDIDATES_PER_LANGUAGE = 2;
+
+/**
+ * How many candidates to keep from each variant so the ranking pool mirrors where the matching
+ * literature actually is (relevant-document distribution estimation, as in federated search).
+ * `matches` estimates that language's literature on the topic. Every language is scaled by
+ * the same factor (the largest that no language runs out of candidates at, capped at `poolCap`),
+ * with a small floor. Without this, an equal number of candidates per language would oversample
+ * small literatures, and when relevance can't separate papers (e.g. "Shakespeare") they would
+ * fill the results in near-equal shares.
+ */
+export function allocateCandidates(
+  variants: { available: number; matches: number | null }[],
+  poolCap: number,
+  floor = MIN_CANDIDATES_PER_LANGUAGE,
+): number[] {
+  const weights = variants.map((v) => (v.available > 0 ? Math.max(v.matches ?? 0, 0) : 0));
+  const total = weights.reduce((a, b) => a + b, 0);
+  if (total === 0) return variants.map((v) => v.available);
+  const shares = weights.map((w) => w / total);
+  let scale = poolCap;
+  variants.forEach((v, i) => {
+    if (shares[i] > 0) scale = Math.min(scale, v.available / shares[i]);
+  });
+  return variants.map((v, i) => (v.available === 0 ? 0 : Math.min(v.available, Math.max(floor, Math.round(scale * shares[i])))));
+}
 
 /** Minimum hits before a sparse query is broadened. */
 export const RELAX_THRESHOLD = 5;
@@ -92,10 +127,13 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
     text: v.text,
     searchQuery: v.concepts.join(" "),
     concepts: v.concepts,
+    topic: v.topic,
     source: "openalex",
     relaxed: false,
     hitCount: 0,
     totalAvailable: null,
+    matchCount: null,
+    kept: 0,
     error: null,
     skipped:
       v.kind === "translated" && pubLangs.length && !pubLangs.includes(v.lang)
@@ -103,7 +141,14 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
         : null,
   }));
 
-  // 2. Retrieve from OpenAlex, one request per variant (plus one broader retry if too few hits).
+  // 2. Retrieve from OpenAlex, one request per variant (plus broader retries if too few hits).
+  // In parallel, one request sizes each language's literature on the topic.
+  const active = variants.filter((v) => !v.skipped);
+  const literature: Promise<Record<string, number> | null> = deps.countByLanguage
+    ? deps
+        .countByLanguage({ search: orQuery(active.map((v) => v.topic)), yearFrom: req.yearFrom, yearTo: req.yearTo })
+        .catch(() => null)
+    : Promise.resolve(null);
   const errors: unknown[] = [];
   const lists = await Promise.all(
     variants.map(async (variant): Promise<Paper[]> => {
@@ -139,6 +184,23 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
     }),
   );
 
+  // 2b. Keep candidates from each language in proportion to its literature on the topic. Lists are
+  // in OpenAlex relevance order, so each language contributes its best matches.
+  const counts = await literature;
+  const literatureEstimate = counts && Object.keys(counts).length ? "topic" : "overall";
+  for (const v of variants) {
+    v.matchCount = (literatureEstimate === "topic" ? counts![v.lang] : OPENALEX_WORKS_BY_LANGUAGE[v.lang]) ?? 0;
+  }
+  const retrievedCount = lists.reduce((n, l) => n + l.length, 0);
+  const keep = allocateCandidates(
+    variants.map((v, i) => ({ available: lists[i].length, matches: v.matchCount })),
+    SHORTLIST_FACTOR * req.limit,
+  );
+  variants.forEach((v, i) => {
+    lists[i] = lists[i].slice(0, keep[i]);
+    v.kept = lists[i].length;
+  });
+
   // 3. Optional supplementary Crossref retrieval for the original query.
   if (deps.searchCrossref) {
     const crossrefVariant: QueryVariant = {
@@ -149,9 +211,12 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
       searchQuery: req.query,
       concepts: [req.query],
       source: "crossref",
+      topic: req.query,
       relaxed: false,
       hitCount: 0,
       totalAvailable: null,
+      matchCount: null,
+      kept: 0,
       error: null,
       skipped: null,
     };
@@ -164,6 +229,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
         rows: req.limit,
       });
       crossrefVariant.hitCount = result.papers.length;
+      crossrefVariant.kept = result.papers.length;
       crossrefVariant.totalAvailable = result.total;
       lists.push(result.papers.map((p, idx) => ({ ...p, retrievedBy: [{ variantId: crossrefVariant.id, rank: idx + 1 }] })));
     } catch (err) {
@@ -233,6 +299,8 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
     filters: { publicationLanguages: pubLangs, yearFrom: req.yearFrom, yearTo: req.yearTo, limit: req.limit },
     variants,
     candidateCount: merged.length,
+    retrievedCount,
+    literatureEstimate,
     papers: selectTopResults(ranked, modes, effectiveMode, req.limit, {
       variantId: variants[0].id,
       k: COMPARISON_K,

@@ -69,9 +69,13 @@ export default function HowItWorks() {
             rank. That list drives the “via Chinese query” labels and the coverage statistics.
           </p>
           <p>
-            All candidates from all languages are then scored together, and the top 100 (or 25 or 50) are shown. There is no
-            per-language quota at retrieval or in the results: a language contributes as many papers as rank among the most
-            relevant, which may be all of them or none. For a topic studied mostly in English, expect mostly English results.
+            Candidates are then drawn from each language in proportion to how much literature it has on the topic. Gemini names the
+            question’s most distinctive subject term in every language (asthma, 哮喘, asma, …), and one OpenAlex request counts the
+            works in each language that match any of them. If that request fails, each language’s overall share of OpenAlex is used. This is relevant-document distribution estimation, as used in federated
+            search. Each language keeps at least its two best matches. Equal numbers per language would oversample small
+            literatures: for “Shakespeare”, English has about 99,000 matches and Italian about 1,100, and equal shares would let
+            Italian fill as much of the list as English whenever relevance can’t tell papers apart. All kept candidates are then
+            scored together and the top 100 (or 25 or 50) are shown, so the mix reflects where the research is.
           </p>
         </Step>
 
@@ -156,6 +160,10 @@ export default function HowItWorks() {
           <li>OpenAlex language tags are machine-detected and sometimes wrong. Some papers tagged Chinese have English-only metadata.</li>
           <li>Many records lack abstracts. Those are scored on titles alone, which are short and can inflate or deflate similarity.</li>
           <li>Each language contributes at most 100 candidates (OpenAlex’s own top matches), so this is a sample, not an exhaustive search.</li>
+          <li>
+            Literature sizes are estimated from OpenAlex counts for a machine-translated subject term. They depend on the term chosen
+            and on OpenAlex’s language tags, which are themselves machine-detected.
+          </li>
           <li>
             Large candidate pools are shortlisted using titles before full scoring. A paper with an uninformative title but a
             highly relevant abstract can occasionally miss the shortlist.

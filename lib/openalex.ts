@@ -158,3 +158,46 @@ export async function searchOpenAlex(
   const papers = results.map(normalizeOpenAlexWork).filter((p): p is Paper => p !== null);
   return { papers, total: typeof data?.meta?.count === "number" ? data.meta.count : null };
 }
+
+interface GroupByResponse {
+  group_by?: Array<{ key?: string | null; count?: number | null }> | null;
+}
+
+/**
+ * Count works per language matching `search` in a single request (group_by=language). Used to
+ * estimate how large each language's literature on the topic is.
+ */
+export async function countWorksByLanguage(
+  params: { search: string; yearFrom: number | null; yearTo: number | null },
+  config: OpenAlexConfig,
+  fetchOpts: Partial<FetchJsonOptions> = {},
+): Promise<Record<string, number>> {
+  const url = new URL(BASE_URL);
+  url.searchParams.set("search.title_and_abstract", params.search);
+  const filters: string[] = [];
+  if (params.yearFrom != null) filters.push(`from_publication_date:${params.yearFrom}-01-01`);
+  if (params.yearTo != null) filters.push(`to_publication_date:${params.yearTo}-12-31`);
+  if (filters.length) url.searchParams.set("filter", filters.join(","));
+  url.searchParams.set("group_by", "language");
+  if (config.mailto) url.searchParams.set("mailto", config.mailto);
+  if (config.apiKey) url.searchParams.set("api_key", config.apiKey);
+  const data = await fetchJson<GroupByResponse>(url.toString(), { service: "OpenAlex", timeoutMs: 15_000, retries: 1, ...fetchOpts });
+  const out: Record<string, number> = {};
+  for (const g of Array.isArray(data?.group_by) ? data.group_by : []) {
+    const code = typeof g?.key === "string" ? g.key.split("/").pop()!.toLowerCase() : null;
+    // OpenAlex can return more than one group key for the same language (e.g. differing case or
+    // form), so counts are summed rather than overwritten.
+    if (code && /^[a-z]{2,3}$/.test(code) && typeof g.count === "number") out[code] = (out[code] ?? 0) + g.count;
+  }
+  return out;
+}
+
+/**
+ * OR terms together for OpenAlex boolean search, each quoted as an exact phrase. Quoting keeps
+ * languages comparable: unquoted, OpenAlex matches multi-character Chinese/Japanese terms loosely
+ * (农业适应 matched 5,366 Chinese works unquoted vs 6 as a phrase), inflating CJK counts.
+ */
+export function orQuery(terms: string[]): string {
+  const cleaned = [...new Set(terms.map((t) => t.replace(/["“”()]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean))];
+  return cleaned.map((t) => `"${t}"`).join(" OR ");
+}

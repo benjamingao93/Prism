@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildOpenAlexUrl, normalizeOpenAlexWork, reconstructAbstract, searchOpenAlex } from "@/lib/openalex";
+import { buildOpenAlexUrl, countWorksByLanguage, normalizeOpenAlexWork, orQuery, reconstructAbstract, searchOpenAlex } from "@/lib/openalex";
 import { listResponse, work } from "../fixtures/openalex";
 
 describe("reconstructAbstract", () => {
@@ -140,5 +140,30 @@ describe("searchOpenAlex", () => {
     const fetchImpl = vi.fn().mockResolvedValue(Response.json({ meta: null }));
     const result = await searchOpenAlex(params, config, { fetchImpl, sleep: async () => {} });
     expect(result).toEqual({ papers: [], total: null });
+  });
+});
+
+describe("literature counts", () => {
+  it("builds an OR query, quoting phrases and dropping duplicates", () => {
+    expect(orQuery(["asthma", "哮喘", "asma infantil", "asthma", ""])).toBe('"asthma" OR "哮喘" OR "asma infantil"');
+  });
+
+  it("parses per-language counts from a group_by response", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      Response.json({
+        group_by: [
+          { key: "https://openalex.org/languages/en", count: 899 },
+          { key: "zh", count: 100 },
+          { key: null, count: 5 },
+          // A second key for the same language must add to, not replace, the first.
+          { key: "EN", count: 1 },
+        ],
+      }),
+    );
+    const counts = await countWorksByLanguage({ search: "asthma OR 哮喘", yearFrom: 2015, yearTo: null }, { apiKey: null, mailto: null }, { fetchImpl });
+    expect(counts).toEqual({ en: 900, zh: 100 });
+    const url = new URL(fetchImpl.mock.calls[0][0]);
+    expect(url.searchParams.get("group_by")).toBe("language");
+    expect(url.searchParams.get("filter")).toBe("from_publication_date:2015-01-01");
   });
 });

@@ -4,7 +4,7 @@ import { searchCrossref, type CrossrefSearchParams } from "./crossref";
 import { embeddingModelName, embeddingStatus, semanticScores } from "./embeddings";
 import { env, modelChain } from "./env";
 import { llmConfigured, structuredCall } from "./llm";
-import { searchOpenAlex, type OpenAlexSearchParams, type SearchResult } from "./openalex";
+import { countWorksByLanguage, searchOpenAlex, type OpenAlexSearchParams, type SearchResult } from "./openalex";
 import { expandQuery, ExpansionSchema } from "./query-expansion";
 import type { SearchDeps } from "./search";
 import { TranslationSchema, translateItems } from "./translation";
@@ -13,6 +13,7 @@ import type { Capabilities, TranslateRequest } from "./types";
 const DAY = 24 * 60 * 60 * 1000;
 // Cache raw source responses: OpenAlex bills keyword searches per request.
 const sourceCache = globalCache<SearchResult>("source-responses", 1000, DAY);
+const countCache = globalCache<Record<string, number>>("language-counts", 1000, DAY);
 
 function cached(prefix: string, params: object, run: () => Promise<SearchResult>): Promise<SearchResult> {
   const key = `${prefix}:${JSON.stringify(params)}`;
@@ -60,6 +61,15 @@ export function searchDeps(): SearchDeps {
       cached("openalex", params, () =>
         searchOpenAlex(params, { apiKey: e.OPENALEX_API_KEY, mailto: e.OPENALEX_MAILTO }),
       ),
+    countByLanguage: (params) => {
+      const key = `openalex-count:${JSON.stringify(params)}`;
+      const hit = countCache.get(key);
+      if (hit) return Promise.resolve(hit);
+      return countWorksByLanguage(params, { apiKey: e.OPENALEX_API_KEY, mailto: e.OPENALEX_MAILTO }).then((counts) => {
+        countCache.set(key, counts);
+        return counts;
+      });
+    },
     searchCrossref: e.CROSSREF_ENABLED
       ? (params: CrossrefSearchParams) =>
           cached("crossref", params, () => searchCrossref(params, e.CROSSREF_MAILTO ?? e.OPENALEX_MAILTO))

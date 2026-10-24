@@ -10,6 +10,8 @@ export interface PlannedVariant {
   text: string;
   /** Core concepts, most essential first; each may be several words ("contaminación del aire"). */
   concepts: string[];
+  /** The question's most distinctive subject term in this language, used to size its literature. */
+  topic: string;
 }
 
 export interface ExpansionResult {
@@ -25,6 +27,7 @@ export const ExpansionSchema = z.object({
       lang: z.enum(QUERY_LANGUAGES),
       translation: z.string(),
       keywords: z.array(z.string()),
+      topic: z.string(),
     }),
   ),
 });
@@ -35,6 +38,7 @@ Given a research question, produce for each requested language:
 - "translation": a faithful natural-language translation of the question. For the question's own language, repeat the question unchanged.
 - "keywords": an array of 2–5 core concepts as they would appear in titles and abstracts of scientific papers written in that language, ordered from most to least essential. Each concept is one array item and may be a multi-word term (for example "air pollution" or "contaminación del aire"); never split one concept across items. Use the standard technical terminology of that language's literature. No boolean operators, quotes, or punctuation. For Chinese and Japanese, prefer short, common terms of 2–4 characters and split long compounds into separate items (海洋, 生态 rather than 海洋生态系统), because the search index only matches whole terms.
 Produce the same concepts, in the same order, for every language.
+- "topic": the question's main object of study as one short, common term in that language: the thing being studied, such as "asthma", "acupuncture", "rice", "microplastics" or "Shakespeare". Not a modifier, method, process or generic word (not "drought-resistant", "adaptation", "effects", "city" or "children"). Use the everyday term researchers in that language would write, as one whole word or phrase; never split it, including in Chinese and Japanese. Use the same concept in every language.
 Do not add concepts that are not in the question. Do not answer the question.`;
 
 export function buildExpansionPrompt(query: string, source: QueryLanguage, targets: QueryLanguage[]): string {
@@ -73,8 +77,10 @@ export function planFromExpansion(
 ): PlannedVariant[] {
   const byLang = new Map(output.variants.map((v) => [v.lang, v]));
   const originalConcepts = cleanConcepts(byLang.get(source)?.keywords ?? []);
+  const concepts0 = originalConcepts.length ? originalConcepts : conceptsFromQuery(query);
+  const topicOf = (raw: string | undefined, fallback: string) => cleanConcepts([raw ?? ""])[0] ?? fallback;
   const plan: PlannedVariant[] = [
-    { lang: source, kind: "original", text: query, concepts: originalConcepts.length ? originalConcepts : conceptsFromQuery(query) },
+    { lang: source, kind: "original", text: query, concepts: concepts0, topic: topicOf(byLang.get(source)?.topic, concepts0[0]) },
   ];
   for (const lang of targets) {
     if (lang === source) continue;
@@ -82,7 +88,7 @@ export function planFromExpansion(
     const concepts = v ? cleanConcepts(v.keywords) : [];
     const translation = v?.translation.trim() ?? "";
     if (!concepts.length || !translation) continue;
-    plan.push({ lang, kind: "translated", text: translation.slice(0, 500), concepts });
+    plan.push({ lang, kind: "translated", text: translation.slice(0, 500), concepts, topic: topicOf(v?.topic, concepts[0]) });
   }
   return plan;
 }
@@ -102,7 +108,7 @@ export async function expandQuery(
   deps: ExpandDeps,
 ): Promise<ExpansionResult> {
   const fallback = (notice: string): ExpansionResult => ({
-    variants: [{ lang: source, kind: "original", text: query, concepts: conceptsFromQuery(query) }],
+    variants: [{ lang: source, kind: "original", text: query, concepts: conceptsFromQuery(query), topic: conceptsFromQuery(query)[0] ?? query }],
     notice,
     model: null,
   });

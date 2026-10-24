@@ -33,10 +33,13 @@ const v = (id: string, lang: string, kind: "original" | "translated"): QueryVari
   text: "rice drought",
   searchQuery: "rice drought",
   concepts: ["rice", "drought"],
+  topic: "rice",
   source: "openalex",
   relaxed: false,
   hitCount: 0,
   totalAvailable: null,
+  matchCount: null,
+  kept: 0,
   error: null,
   skipped: null,
 });

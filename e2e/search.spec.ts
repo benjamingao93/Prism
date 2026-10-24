@@ -6,8 +6,8 @@ import type { Capabilities, QueryVariant, RankedPaper, SearchResponse } from "..
 const caps: Capabilities = { llm: false, embeddings: "ready", embeddingModel: "test-model", openalexKey: true, crossref: false };
 
 const variants: QueryVariant[] = [
-  { id: "openalex:en:0", lang: "en", kind: "original", text: "drought rice", searchQuery: "drought rice", concepts: ["drought", "rice"], source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, error: null, skipped: null },
-  { id: "openalex:zh:1", lang: "zh", kind: "translated", text: "干旱 水稻", searchQuery: "干旱 水稻", concepts: ["干旱", "水稻"], source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, error: null, skipped: null },
+  { id: "openalex:en:0", lang: "en", kind: "original", text: "drought rice", searchQuery: "drought rice", concepts: ["drought", "rice"], topic: "drought", source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, matchCount: 2, kept: 2, error: null, skipped: null },
+  { id: "openalex:zh:1", lang: "zh", kind: "translated", text: "干旱 水稻", searchQuery: "干旱 水稻", concepts: ["干旱", "水稻"], topic: "干旱", source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, matchCount: 1, kept: 1, error: null, skipped: null },
 ];
 
 function paper(id: string, title: string, language: string | null, semanticRaw: number, keyword: number, variantId: string): RankedPaper {
@@ -45,6 +45,8 @@ const response: SearchResponse = {
   filters: { publicationLanguages: [], yearFrom: null, yearTo: null, limit: 100 },
   variants,
   candidateCount: 3,
+  retrievedCount: 3,
+  literatureEstimate: "topic",
   // Keyword favors Alpha; semantic favors Gamma (Chinese).
   papers: [
     paper("A", "TEST Alpha keyword-heavy paper", "en", 0.3, 1, "openalex:en:0"),
