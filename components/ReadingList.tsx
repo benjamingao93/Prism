@@ -45,7 +45,7 @@ export function ReadingList() {
                           href={href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-serif text-[15px] leading-snug hover:text-accent-blue hover:underline"
+                          className="font-serif text-[15px] leading-snug hover:text-accent-brand hover:underline"
                         >
                           {p.title ?? "Untitled record"}
                           <ExternalLink className="ml-1 inline size-3 align-baseline opacity-60" aria-hidden="true" />

@@ -46,7 +46,7 @@ export function RankingModeToggle({
             key={m}
             value={m}
             disabled={!available.includes(m)}
-            className="px-2.5 text-xs data-[state=on]:bg-accent-blue-soft data-[state=on]:text-accent-blue"
+            className="px-2.5 text-xs data-[state=on]:bg-accent-brand-soft data-[state=on]:text-accent-brand"
             title={available.includes(m) ? undefined : "Requires the multilingual embedding model"}
           >
             {MODE_LABELS[m]}

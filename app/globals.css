@@ -11,8 +11,8 @@
   --font-serif: var(--font-source-serif), "Songti SC", "Hiragino Mincho ProN", "Noto Serif CJK SC", Georgia, serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
   --font-heading: var(--font-source-serif), Georgia, serif;
-  --color-accent-blue: var(--accent-blue);
-  --color-accent-blue-soft: var(--accent-blue-soft);
+  --color-accent-brand: var(--accent-brand);
+  --color-accent-brand-soft: var(--accent-brand-soft);
   --color-surface: var(--surface);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -55,7 +55,7 @@
 }
 
 :root {
-  /* Editorial research palette: warm-neutral canvas, white surfaces, charcoal ink, restrained blue. */
+  /* Editorial research palette: warm beige canvas, white surfaces, charcoal ink, earthy moss-green accent. */
   --background: oklch(0.972 0.014 85); /* soft warm beige; cards stay white */
   --surface: oklch(1 0 0);
   --foreground: oklch(0.23 0.008 260);
@@ -65,23 +65,23 @@
   --card-foreground: oklch(0.23 0.008 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.23 0.008 260);
-  --primary: oklch(0.47 0.13 258);
+  --primary: oklch(0.5 0.085 145);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.965 0.004 260);
   --secondary-foreground: oklch(0.28 0.01 260);
   --muted: oklch(0.965 0.003 260);
   --muted-foreground: oklch(0.5 0.01 260);
-  --accent: oklch(0.96 0.012 258);
-  --accent-foreground: oklch(0.3 0.06 258);
-  --accent-blue: oklch(0.47 0.13 258);
-  --accent-blue-soft: oklch(0.955 0.022 258);
+  --accent: oklch(0.955 0.02 140);
+  --accent-foreground: oklch(0.32 0.06 145);
+  --accent-brand: oklch(0.5 0.085 145);
+  --accent-brand-soft: oklch(0.95 0.028 138);
   --success: oklch(0.52 0.11 160);
   --warning: oklch(0.6 0.12 70);
   --destructive: oklch(0.56 0.2 27);
   --border: oklch(0.915 0.004 260);
   --input: oklch(0.89 0.005 260);
-  --ring: oklch(0.6 0.11 258);
-  --chart-1: oklch(0.47 0.13 258);
+  --ring: oklch(0.62 0.08 145);
+  --chart-1: oklch(0.5 0.085 145);
   --chart-2: oklch(0.6 0.1 200);
   --chart-3: oklch(0.55 0.08 160);
   --chart-4: oklch(0.62 0.1 70);
@@ -98,7 +98,7 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* Dark theme: built on the brand's dark panel (#0F101A), with a lighter blue for legible accents. */
+/* Dark theme: built on the brand's dark panel (#0F101A), with a lighter moss green for legible accents. */
 .dark {
   --background: oklch(0.165 0.012 275);
   --surface: oklch(0.205 0.012 275);
@@ -108,35 +108,35 @@
   --card-foreground: oklch(0.93 0.006 270);
   --popover: oklch(0.225 0.012 275);
   --popover-foreground: oklch(0.93 0.006 270);
-  --primary: oklch(0.6 0.15 258);
+  --primary: oklch(0.58 0.09 145);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.255 0.012 275);
   --secondary-foreground: oklch(0.86 0.008 270);
   --muted: oklch(0.245 0.012 275);
   --muted-foreground: oklch(0.7 0.012 270);
-  --accent: oklch(0.27 0.03 258);
-  --accent-foreground: oklch(0.9 0.04 258);
-  --accent-blue: oklch(0.74 0.12 255);
-  --accent-blue-soft: oklch(0.29 0.055 258);
+  --accent: oklch(0.28 0.03 145);
+  --accent-foreground: oklch(0.9 0.04 140);
+  --accent-brand: oklch(0.75 0.095 140);
+  --accent-brand-soft: oklch(0.3 0.045 145);
   --success: oklch(0.74 0.13 160);
   --warning: oklch(0.8 0.13 75);
   --destructive: oklch(0.7 0.19 25);
   --border: oklch(1 0 0 / 11%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.68 0.12 258);
-  --chart-1: oklch(0.74 0.12 255);
+  --ring: oklch(0.7 0.08 145);
+  --chart-1: oklch(0.75 0.095 140);
   --chart-2: oklch(0.72 0.1 200);
   --chart-3: oklch(0.72 0.1 160);
   --chart-4: oklch(0.78 0.12 75);
   --chart-5: oklch(0.7 0.02 270);
   --sidebar: oklch(0.205 0.012 275);
   --sidebar-foreground: oklch(0.93 0.006 270);
-  --sidebar-primary: oklch(0.6 0.15 258);
+  --sidebar-primary: oklch(0.58 0.09 145);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.255 0.012 275);
   --sidebar-accent-foreground: oklch(0.93 0.006 270);
   --sidebar-border: oklch(1 0 0 / 11%);
-  --sidebar-ring: oklch(0.68 0.12 258);
+  --sidebar-ring: oklch(0.7 0.08 145);
   color-scheme: dark;
 }
 
@@ -159,7 +159,7 @@
     -webkit-text-size-adjust: 100%;
   }
   ::selection {
-    background: var(--accent-blue-soft);
+    background: var(--accent-brand-soft);
   }
 }
 @layer utilities {

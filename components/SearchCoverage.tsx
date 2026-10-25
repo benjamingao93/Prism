@@ -32,7 +32,7 @@ export function SearchCoverage({ coverage, candidateCount, variants, refine, onT
         <h2 id="coverage-title" className="font-serif text-base font-semibold">
           Search coverage
         </h2>
-        <Link href="/map" className="text-xs text-accent-blue hover:underline">
+        <Link href="/map" className="text-xs text-accent-brand hover:underline">
           View on map
         </Link>
       </div>
@@ -62,13 +62,13 @@ export function SearchCoverage({ coverage, candidateCount, variants, refine, onT
                 aria-pressed={active}
                 className={cn(
                   "group grid w-full grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-2 rounded px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted",
-                  active && "bg-accent-blue-soft",
+                  active && "bg-accent-brand-soft",
                 )}
               >
                 <span className={cn("truncate", !l.code && "text-muted-foreground italic")}>{languageLabel(l.code)}</span>
                 <span className="h-1.5 overflow-hidden rounded-full bg-secondary">
                   <span
-                    className={cn("block h-full rounded-full", l.code && l.code !== "en" ? "bg-accent-blue" : "bg-foreground/35")}
+                    className={cn("block h-full rounded-full", l.code && l.code !== "en" ? "bg-accent-brand" : "bg-foreground/35")}
                     style={{ width: `${(l.count / max) * 100}%` }}
                   />
                 </span>

@@ -36,7 +36,7 @@ export function InitialState() {
       {steps.map(([title, body], i) => (
         <div key={title} className="rounded-lg border bg-surface p-4">
           <div className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-            <span className="tabular flex size-5 items-center justify-center rounded bg-accent-blue-soft text-[11px] text-accent-blue">
+            <span className="tabular flex size-5 items-center justify-center rounded bg-accent-brand-soft text-[11px] text-accent-brand">
               {i + 1}
             </span>
             {title}

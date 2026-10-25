@@ -49,7 +49,7 @@ export default function About() {
         {SOURCES.map(([name, href, desc]) => (
           <div key={name} className="grid gap-1 px-4 py-3 sm:grid-cols-[14rem_1fr]">
             <dt>
-              <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-accent-blue hover:underline">
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-accent-brand hover:underline">
                 {name}
               </a>
             </dt>

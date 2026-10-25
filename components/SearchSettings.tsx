@@ -48,7 +48,7 @@ function Segmented({ options, value, onChange }: { options: [number, string][]; 
           onClick={() => onChange(n)}
           className={cn(
             "h-7 rounded-md border px-2.5 text-xs",
-            value === n ? "border-accent-blue/40 bg-accent-blue-soft text-accent-blue" : "bg-surface text-muted-foreground",
+            value === n ? "border-accent-brand/40 bg-accent-brand-soft text-accent-brand" : "bg-surface text-muted-foreground",
           )}
         >
           {label}
@@ -108,7 +108,7 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
           Top {value.limit}
         </span>
         {activeCount > 0 && (
-          <span className="rounded bg-accent-blue-soft px-1.5 text-[11px] font-medium text-accent-blue">{activeCount} active</span>
+          <span className="rounded bg-accent-brand-soft px-1.5 text-[11px] font-medium text-accent-brand">{activeCount} active</span>
         )}
         <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden="true" />
       </CollapsibleTrigger>

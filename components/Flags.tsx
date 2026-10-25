@@ -86,16 +86,12 @@ export function FlagCollage({ className }: { className?: string }) {
       )}
     >
       <div className="mb-5 grid grid-cols-3 gap-x-2.5 gap-y-3">
-        {COLLAGE.map(([country, lang], i) => (
+        {COLLAGE.map(([country, lang]) => (
           <Flag
             key={country}
             code={country}
             title={`${languageName(lang)} · ${countryName(country)}`}
-            // A slight, deterministic tilt gives the collage a hand-made feel; hover straightens it.
-            style={
-              { "--tilt": `${((i * 7) % 5) - 2}deg` } as React.CSSProperties
-            }
-            className="relative w-full transition-transform duration-200 [transform:rotate(var(--tilt))] hover:z-10 hover:[transform:scale(1.12)]"
+            className="relative w-full transition-transform duration-200 hover:z-10 hover:scale-110"
           />
         ))}
       </div>

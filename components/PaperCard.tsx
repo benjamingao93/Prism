@@ -68,7 +68,7 @@ function RelevanceMeter({ paper, mode }: { paper: RankedPaper; mode: RankingMode
             <span
               className={cn(
                 "font-medium",
-                tone === "high" ? "text-accent-blue" : tone === "medium" ? "text-foreground" : "text-muted-foreground",
+                tone === "high" ? "text-accent-brand" : tone === "medium" ? "text-foreground" : "text-muted-foreground",
               )}
             >
               {label}
@@ -77,7 +77,7 @@ function RelevanceMeter({ paper, mode }: { paper: RankedPaper; mode: RankingMode
           </span>
           <span className="h-1 w-full overflow-hidden rounded-full bg-secondary sm:w-28">
             <span
-              className={cn("block h-full rounded-full", tone === "low" ? "bg-muted-foreground/40" : "bg-accent-blue")}
+              className={cn("block h-full rounded-full", tone === "low" ? "bg-muted-foreground/40" : "bg-accent-brand")}
               style={{ width: `${pct}%` }}
             />
           </span>
@@ -173,7 +173,7 @@ export function PaperCard({
               <span className="rounded border border-success/30 px-1.5 py-0.5 text-[11px] leading-none text-success">Open access</span>
             )}
             {viaTranslated.length > 0 && (
-              <span className="inline-flex items-center gap-1 text-accent-blue">
+              <span className="inline-flex items-center gap-1 text-accent-brand">
                 <Languages className="size-3" aria-hidden="true" />
                 via {viaTranslated.map((v) => languageName(v.lang)).join(" & ")} query
               </span>
@@ -182,7 +182,7 @@ export function PaperCard({
 
           <h3 dir="auto" className="font-serif text-[17px] leading-snug font-semibold text-foreground sm:text-lg" lang={paper.language ?? undefined}>
             {sourceUrl ? (
-              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-accent-blue hover:underline decoration-1 underline-offset-2">
+              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-accent-brand hover:underline decoration-1 underline-offset-2">
                 {paper.title ?? "Untitled record"}
               </a>
             ) : (
@@ -242,7 +242,7 @@ export function PaperCard({
             const Icon = EXPLANATION_ICONS[e.kind];
             return (
               <li key={i} className="flex items-center gap-1.5">
-                <Icon className="size-3.5 shrink-0 text-accent-blue/70" aria-hidden="true" />
+                <Icon className="size-3.5 shrink-0 text-accent-brand/70" aria-hidden="true" />
                 {e.text}
               </li>
             );
@@ -270,7 +270,7 @@ export function PaperCard({
             href={doiUrl(paper.doi)}
             target="_blank"
             rel="noopener noreferrer"
-            className="max-w-full truncate px-1.5 font-mono text-[11px] text-muted-foreground hover:text-accent-blue hover:underline"
+            className="max-w-full truncate px-1.5 font-mono text-[11px] text-muted-foreground hover:text-accent-brand hover:underline"
           >
             doi:{paper.doi}
           </a>
@@ -287,7 +287,7 @@ export function PaperCard({
             aria-pressed={saved}
             aria-label={saved ? "Remove from reading list" : "Save to reading list"}
           >
-            {saved ? <BookmarkCheck className="text-accent-blue" aria-hidden="true" /> : <Bookmark aria-hidden="true" />}
+            {saved ? <BookmarkCheck className="text-accent-brand" aria-hidden="true" /> : <Bookmark aria-hidden="true" />}
             <span className="hidden sm:inline">{saved ? "Saved" : "Save"}</span>
           </Button>
         </div>
@@ -310,7 +310,7 @@ export function PaperCard({
                         type="button"
                         aria-pressed={showTranslated === val}
                         onClick={() => setShowTranslated(val as boolean)}
-                        className={cn("rounded px-2 py-0.5", showTranslated === val ? "bg-accent-blue-soft text-accent-blue" : "text-muted-foreground")}
+                        className={cn("rounded px-2 py-0.5", showTranslated === val ? "bg-accent-brand-soft text-accent-brand" : "text-muted-foreground")}
                       >
                         {label as string}
                       </button>
@@ -418,7 +418,7 @@ export function PaperCard({
             {paper.citedByCount != null && <span className="tabular">Cited by {paper.citedByCount} (not used in ranking)</span>}
             <span>Text scored: {paper.textUsed === "title+abstract" ? "title + abstract" : paper.textUsed === "title" ? "title only" : "none"}</span>
             {paper.openalexId && safeExternalUrl(paper.openalexId) && (
-              <a href={paper.openalexId} target="_blank" rel="noopener noreferrer" className="hover:text-accent-blue hover:underline">
+              <a href={paper.openalexId} target="_blank" rel="noopener noreferrer" className="hover:text-accent-brand hover:underline">
                 OpenAlex record
               </a>
             )}

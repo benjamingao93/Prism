@@ -23,14 +23,14 @@ export function SearchBar({ value, onChange, onSubmit, loading, languageLabel, c
       }}
       className={cn(
         // Pill-shaped, outlined in the accent blue, with a faint blue tint and glow underneath.
-        "group flex w-full items-center gap-2 rounded-full border-[1.5px] border-accent-blue/40 p-1.5 pl-4",
-        "bg-[color-mix(in_oklch,var(--accent-blue-soft)_45%,var(--surface))]",
-        "shadow-[0_12px_32px_-16px_color-mix(in_oklch,var(--accent-blue),transparent_35%)] transition-[border-color,box-shadow]",
-        "focus-within:border-accent-blue focus-within:shadow-[0_0_0_4px_color-mix(in_oklch,var(--accent-blue),transparent_80%),0_12px_32px_-16px_color-mix(in_oklch,var(--accent-blue),transparent_35%)]",
+        "group flex w-full items-center gap-2 rounded-full border-[1.5px] border-accent-brand/40 p-1.5 pl-4",
+        "bg-[color-mix(in_oklch,var(--accent-brand-soft)_45%,var(--surface))]",
+        "shadow-[0_12px_32px_-16px_color-mix(in_oklch,var(--accent-brand),transparent_35%)] transition-[border-color,box-shadow]",
+        "focus-within:border-accent-brand focus-within:shadow-[0_0_0_4px_color-mix(in_oklch,var(--accent-brand),transparent_80%),0_12px_32px_-16px_color-mix(in_oklch,var(--accent-brand),transparent_35%)]",
         compact ? "h-12" : "h-14 sm:h-16",
       )}
     >
-      <Search className="size-5 shrink-0 text-accent-blue/70" aria-hidden="true" />
+      <Search className="size-5 shrink-0 text-accent-brand/70" aria-hidden="true" />
       <label htmlFor="search-input" className="sr-only">
         Research question
       </label>

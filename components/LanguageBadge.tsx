@@ -34,7 +34,7 @@ export function LanguageBadge({
           ? "border-dashed border-border text-muted-foreground"
           : code === "en"
             ? "border-border bg-secondary text-secondary-foreground"
-            : "border-accent-blue/20 bg-accent-blue-soft text-accent-blue",
+            : "border-accent-brand/20 bg-accent-brand-soft text-accent-brand",
         corrected && "border-dashed",
         className,
       )}

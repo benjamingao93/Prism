@@ -12,7 +12,7 @@ export function ComparisonPanel({ comparison, candidateCount }: { comparison: Co
   return (
     <section aria-labelledby="comparison-title" className="rounded-lg border bg-surface p-4 sm:p-5">
       <div className="flex items-center gap-2">
-        <GitCompareArrows className="size-4 text-accent-blue" aria-hidden="true" />
+        <GitCompareArrows className="size-4 text-accent-brand" aria-hidden="true" />
         <h2 id="comparison-title" className="font-serif text-base font-semibold">
           Original-language vs. multilingual search
         </h2>
@@ -50,7 +50,7 @@ export function ComparisonPanel({ comparison, candidateCount }: { comparison: Co
               <LanguageBadge {...paperLanguageProps(p)} className="mt-0.5 shrink-0" />
               <a
                 href={`#paper-${encodeURIComponent(p.id)}`}
-                className="min-w-0 font-serif leading-snug hover:text-accent-blue hover:underline"
+                className="min-w-0 font-serif leading-snug hover:text-accent-brand hover:underline"
                 lang={p.language ?? undefined}
               >
                 {p.title ?? "Untitled record"}

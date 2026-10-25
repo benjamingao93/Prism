@@ -88,7 +88,7 @@ export function ResultsHeader({
           <button
             type="button"
             onClick={onClearCountry}
-            className="inline-flex items-center gap-1 rounded-md border border-accent-blue/30 bg-accent-blue-soft px-2 py-0.5 text-xs text-accent-blue"
+            className="inline-flex items-center gap-1 rounded-md border border-accent-brand/30 bg-accent-brand-soft px-2 py-0.5 text-xs text-accent-brand"
           >
             Published in: {countryName(country)} <X className="size-3" aria-label="Clear" />
           </button>
@@ -97,7 +97,7 @@ export function ResultsHeader({
           <button
             type="button"
             onClick={onClearRefine}
-            className="inline-flex items-center gap-1 rounded-md border border-accent-blue/30 bg-accent-blue-soft px-2 py-0.5 text-xs text-accent-blue"
+            className="inline-flex items-center gap-1 rounded-md border border-accent-brand/30 bg-accent-brand-soft px-2 py-0.5 text-xs text-accent-brand"
           >
             Showing: {refine.map(languageLabel).join(", ")} <X className="size-3" aria-label="Clear" />
           </button>

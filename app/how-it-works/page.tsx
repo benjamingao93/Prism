@@ -18,7 +18,7 @@ const SANITY_CHECK = [
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
     <section className="grid gap-2 border-t py-6 sm:grid-cols-[3rem_1fr]">
-      <span className="tabular font-serif text-2xl text-accent-blue">{String(n).padStart(2, "0")}</span>
+      <span className="tabular font-serif text-2xl text-accent-brand">{String(n).padStart(2, "0")}</span>
       <div>
         <h2 className="font-serif text-xl font-semibold">{title}</h2>
         <div className="mt-2 space-y-2 text-[15px] leading-relaxed text-secondary-foreground">{children}</div>

@@ -56,7 +56,7 @@ function intensity(count: number, max: number): number {
 
 function fillFor(t: number): string {
   if (t <= 0) return "var(--secondary)";
-  return `color-mix(in oklch, var(--accent-blue) ${Math.round(18 + 82 * t)}%, var(--surface))`;
+  return `color-mix(in oklch, var(--accent-brand) ${Math.round(18 + 82 * t)}%, var(--surface))`;
 }
 
 export function PublicationMap() {
@@ -211,7 +211,7 @@ export function PublicationMap() {
                           {hoverCount} {hoverCount === 1 ? "paper" : "papers"} · {Math.round((100 * hoverCount) / known)}% of those with a known
                           country
                         </p>
-                        <p className="mt-0.5 text-accent-blue">Click to see them in Search</p>
+                        <p className="mt-0.5 text-accent-brand">Click to see them in Search</p>
                       </>
                     ) : (
                       <p className="text-muted-foreground">No papers in these results</p>
@@ -256,7 +256,7 @@ export function PublicationMap() {
                       {countryName(c.code)}
                     </span>
                     <span className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                      <span className="block h-full rounded-full bg-accent-blue" style={{ width: `${(c.count / max) * 100}%` }} />
+                      <span className="block h-full rounded-full bg-accent-brand" style={{ width: `${(c.count / max) * 100}%` }} />
                     </span>
                     <span className="tabular w-6 text-right text-muted-foreground">{c.count}</span>
                   </button>
