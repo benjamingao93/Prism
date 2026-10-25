@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useAppState } from "./AppState";
 import { PrismLockup } from "./Logo";
 import { ReadingList } from "./ReadingList";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { href: "/", label: "Search" },
@@ -61,6 +62,7 @@ export function SiteHeader() {
               ))}
             </SelectContent>
           </Select>
+          <ThemeToggle />
           <ReadingList />
         </div>
       </div>
