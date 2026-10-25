@@ -22,11 +22,15 @@ export function SearchBar({ value, onChange, onSubmit, loading, languageLabel, c
         onSubmit();
       }}
       className={cn(
-        "group flex w-full items-center gap-2 rounded-xl border border-input bg-surface p-1.5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-shadow focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring),transparent_75%)]",
+        // Pill-shaped, outlined in the accent blue, with a faint blue tint and glow underneath.
+        "group flex w-full items-center gap-2 rounded-full border-[1.5px] border-accent-blue/40 p-1.5 pl-4",
+        "bg-[color-mix(in_oklch,var(--accent-blue-soft)_45%,var(--surface))]",
+        "shadow-[0_12px_32px_-16px_color-mix(in_oklch,var(--accent-blue),transparent_35%)] transition-[border-color,box-shadow]",
+        "focus-within:border-accent-blue focus-within:shadow-[0_0_0_4px_color-mix(in_oklch,var(--accent-blue),transparent_80%),0_12px_32px_-16px_color-mix(in_oklch,var(--accent-blue),transparent_35%)]",
         compact ? "h-12" : "h-14 sm:h-16",
       )}
     >
-      <Search className="ml-2.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <Search className="size-5 shrink-0 text-accent-blue/70" aria-hidden="true" />
       <label htmlFor="search-input" className="sr-only">
         Research question
       </label>
@@ -45,13 +49,13 @@ export function SearchBar({ value, onChange, onSubmit, loading, languageLabel, c
           compact ? "text-[15px]" : "text-base sm:text-lg",
         )}
       />
-      <span className="hidden shrink-0 rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground sm:inline">
+      <span className="hidden shrink-0 rounded-full bg-surface/70 px-2.5 py-1 text-xs text-muted-foreground sm:inline">
         {languageLabel}
       </span>
       <Button
         type="submit"
         disabled={loading || value.trim().length < 2}
-        className={cn("shrink-0 rounded-lg px-4", compact ? "h-9" : "h-10 sm:h-12 sm:px-5")}
+        className={cn("shrink-0 rounded-full px-4", compact ? "h-9" : "h-10 sm:h-12 sm:px-6")}
       >
         {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
         <span className="hidden sm:inline">{loading ? "Searching" : "Search"}</span>

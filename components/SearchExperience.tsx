@@ -22,6 +22,7 @@ import { useAppState } from "./AppState";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { PaperCard, type PaperTranslation } from "./PaperCard";
 import { ResultsHeader } from "./ResultsHeader";
+import { LogoMark } from "./Logo";
 import { SearchBar } from "./SearchBar";
 import { SearchCoverage } from "./SearchCoverage";
 import { DEFAULT_SETTINGS, SearchSettings, type SearchSettingsValue } from "./SearchSettings";
@@ -315,13 +316,20 @@ export function SearchExperience() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
       <section className={hasResults || status === "loading" ? "pt-6 pb-5" : "pt-14 pb-8 sm:pt-20"}>
         {!(hasResults || status === "loading") && (
-          <div className="mb-7 max-w-2xl">
-            <h1 className="font-serif text-[2rem] leading-[1.1] font-semibold tracking-tight sm:text-5xl">
-              Research has no single language.
-            </h1>
-            <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Discover relevant scientific papers across languages with multilingual search and semantic relevance ranking.
-            </p>
+          <div className="mb-8 flex items-center justify-between gap-10">
+            <div className="max-w-2xl">
+              <h1 className="font-serif text-[2rem] leading-[1.1] font-semibold tracking-tight sm:text-5xl">
+                Research has no single language.
+              </h1>
+              <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Discover relevant scientific papers across languages with multilingual search and semantic relevance ranking.
+              </p>
+            </div>
+            <div aria-hidden="true" className="relative hidden shrink-0 md:block">
+              {/* Soft spectrum glow behind the mark. */}
+              <div className="absolute inset-4 rounded-full bg-[conic-gradient(from_200deg,#E5484D33,#F76B1533,#FFC53D33,#30A46C33,#0090FF33,#8E4EC633,#E5484D33)] blur-2xl" />
+              <LogoMark className="relative h-40 w-auto text-[var(--brand-ink)] lg:h-48" />
+            </div>
           </div>
         )}
         <div className="space-y-3">

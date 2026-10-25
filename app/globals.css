@@ -86,7 +86,8 @@
   --chart-3: oklch(0.55 0.08 160);
   --chart-4: oklch(0.62 0.1 70);
   --chart-5: oklch(0.5 0.02 260);
-  --radius: 0.5rem;
+  /* Generous corners throughout; the sm–4xl radii scale from this. */
+  --radius: 0.875rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
