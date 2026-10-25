@@ -332,7 +332,9 @@ export function SearchExperience() {
   const searchingNote =
     caps?.embeddings === "loading"
       ? "Retrieving papers… the embedding model is still loading on first run."
-      : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking candidates from each in proportion to its literature…`;
+      : caps?.embeddings === "on-demand"
+        ? `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages… the first search after a quiet spell takes a little longer while the AI model wakes up.`
+        : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking candidates from each in proportion to its literature…`;
 
   const renderSearchControls = (compact: boolean) => (
     <>

@@ -162,7 +162,11 @@ export interface RankedPaper extends Paper {
   textUsed: "title+abstract" | "title" | "none";
 }
 
-export type EmbeddingStatus = "disabled" | "idle" | "loading" | "ready" | "failed";
+/**
+ * "on-demand": serverless (Vercel), where each function instance loads the model when a search
+ * first needs it, so this process's state says nothing about the one that will run the search.
+ */
+export type EmbeddingStatus = "disabled" | "idle" | "loading" | "ready" | "failed" | "on-demand";
 
 export interface Capabilities {
   llm: boolean;

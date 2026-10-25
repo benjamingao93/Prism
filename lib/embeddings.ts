@@ -33,8 +33,12 @@ const state: EmbeddingState = (g.__prismEmbeddings ??= {
 
 const vectorCache = globalCache<number[]>("embeddings", 20_000, 7 * 24 * 60 * 60 * 1000);
 
+/** True on Vercel, where the model is loaded per function instance, inside the request that needs it. */
+export const embeddingsOnDemand = Boolean(process.env.VERCEL);
+
 export function embeddingStatus(): EmbeddingStatus {
-  return env().EMBEDDINGS_ENABLED ? state.status : "disabled";
+  if (!env().EMBEDDINGS_ENABLED) return "disabled";
+  return embeddingsOnDemand && state.status === "idle" ? "on-demand" : state.status;
 }
 
 export function embeddingModelName(): string | null {

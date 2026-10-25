@@ -1,0 +1,8 @@
+# Not needed to build on Vercel (the CLI otherwise uploads them from this folder).
+.cache
+.next
+node_modules
+test-results
+playwright-report
+public/flags
+.env*
