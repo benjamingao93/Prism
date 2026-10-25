@@ -28,11 +28,11 @@ export function SearchCoverage({ coverage, candidateCount, variants, refine, onT
   const max = Math.max(1, ...coverage.languages.map((l) => l.count));
   return (
     <section aria-labelledby="coverage-title" className="rounded-lg border bg-surface p-4">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 id="coverage-title" className="font-serif text-base font-semibold">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 id="coverage-title" className="font-serif text-base font-semibold whitespace-nowrap">
           Search coverage
         </h2>
-        <span className="flex gap-3">
+        <span className="flex gap-3 whitespace-nowrap">
           <Link href="/gaps" className="text-xs text-accent-brand hover:underline">
             Find gaps
           </Link>

@@ -39,7 +39,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 function Segmented({ options, value, onChange }: { options: [number, string][]; value: number; onChange: (n: number) => void }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex flex-wrap gap-1">
       {options.map(([n, label]) => (
         <button
           key={n}
@@ -47,7 +47,7 @@ function Segmented({ options, value, onChange }: { options: [number, string][]; 
           aria-pressed={value === n}
           onClick={() => onChange(n)}
           className={cn(
-            "h-7 rounded-md border px-2.5 text-xs",
+            "h-7 rounded-md border px-2.5 text-xs whitespace-nowrap",
             value === n ? "border-accent-brand/40 bg-accent-brand-soft text-accent-brand" : "bg-surface text-muted-foreground",
           )}
         >
@@ -98,7 +98,8 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
   };
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-xl border bg-surface">
+    // A container, so the layout follows the panel's own width: narrow in the landing hero, wide on results.
+    <Collapsible open={open} onOpenChange={setOpen} className="@container rounded-xl border bg-surface">
       <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40 rounded-xl">
         <SlidersHorizontal className="size-4 text-muted-foreground" aria-hidden="true" />
         <span className="font-medium">Search settings</span>
@@ -113,7 +114,7 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
         <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden="true" />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="grid gap-5 border-t px-4 py-4 md:grid-cols-2">
+        <div className="grid gap-5 border-t px-4 py-4 @3xl:grid-cols-2">
           <fieldset className="space-y-2">
             <legend className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Publication languages</legend>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
@@ -155,7 +156,7 @@ export function SearchSettings({ value, onChange, availableModes, llmAvailable }
               <p className="text-xs leading-relaxed text-muted-foreground">{MODE_DESCRIPTIONS[value.mode]}</p>
             </fieldset>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 @lg:grid-cols-2">
               <fieldset className="space-y-2">
                 <legend className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Results</legend>
                 <Segmented
