@@ -103,13 +103,6 @@ export function ResultsHeader({
           </button>
         )}
       </div>
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        Candidates are drawn from each language in proportion to the size of its literature on the topic
-        {response.literatureEstimate === "overall" ? " (estimated from each language’s overall share of OpenAlex)" : ""}, then the top{" "}
-        {resultCount(f)} are chosen by relevance alone, so the language mix reflects where the research is. Scores compare papers
-        within this candidate pool and are not judgments of scientific quality. This is a sample of OpenAlex records, not an
-        exhaustive search.
-      </p>
     </div>
   );
 }
