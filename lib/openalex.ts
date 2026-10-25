@@ -126,6 +126,8 @@ export interface OpenAlexSearchParams {
   yearFrom: number | null;
   yearTo: number | null;
   perPage: number;
+  /** 1-based results page (OpenAlex basic paging). */
+  page?: number;
 }
 
 export interface OpenAlexConfig {
@@ -142,6 +144,7 @@ export function buildOpenAlexUrl(params: OpenAlexSearchParams, config: OpenAlexC
   if (params.yearTo != null) filters.push(`to_publication_date:${params.yearTo}-12-31`);
   if (filters.length) url.searchParams.set("filter", filters.join(","));
   url.searchParams.set("per_page", String(Math.min(Math.max(params.perPage, 1), 100)));
+  if (params.page && params.page > 1) url.searchParams.set("page", String(params.page));
   url.searchParams.set("select", SELECT_FIELDS);
   if (config.mailto) url.searchParams.set("mailto", config.mailto);
   if (config.apiKey) url.searchParams.set("api_key", config.apiKey);

@@ -21,7 +21,7 @@ Science is published in many languages, but most literature discovery happens th
 
 - **Ask in any of 15 languages:** English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian and Arabic.
 - **Search all of them at once.** Gemini turns your question into keyword queries in every language, and each query searches [OpenAlex](https://openalex.org) for papers published in that language.
-- **Rank across languages.** Results are scored with multilingual embeddings and language-aware BM25 keyword matching, and the 100 most relevant are shown, whatever their language.
+- **Rank across languages.** Results are scored with multilingual embeddings and language-aware BM25 keyword matching, and the 100 most relevant are shown, whatever their language. **Load more** searches one page deeper in every language and re-ranks everything together, up to 1,000 results.
 - **Show its work.** Each result explains why it matched: semantic similarity, matched terms, and which language's query found it. A coverage panel shows the language mix and every query that ran.
 - **Fix wrong language tags.** OpenAlex detects languages automatically and sometimes mislabels papers, such as Chinese-tagged papers with English abstracts. Prism flags papers whose text disagrees with their tag (unless the title is in the tagged language, since many journals add English abstracts), and Gemini checks them. Confirmed corrections show as a dashed badge that names the original tag.
 - **Keep originals first.** Titles and abstracts can be machine-translated into your language; translations are always labeled and shown next to the original. Optional AI summaries use only the abstract and say what it doesn't state.
@@ -125,7 +125,7 @@ docs/           logo and screenshot used in this README
 
 ## Limitations
 
-- **Coverage:** Prism searches OpenAlex only. Regional journals, theses and non-DOI literature are underrepresented, and each language contributes at most 100 candidates, so results are a sample, not an exhaustive search.
+- **Coverage:** Prism searches OpenAlex only. Regional journals, theses and non-DOI literature are underrepresented, and each language contributes 100 candidates per page loaded (up to 10 pages), so results are a sample, not an exhaustive search.
 - **Language corrections:** these judge the title and abstract, not the full text. A paper whose title and abstract are both in another language than its tag is relabeled. Without a Gemini key, OpenAlex's tags are used as they are.
 - **Literature sizes:** these are estimates from OpenAlex counts for a machine-translated subject term.
 - **Missing abstracts:** many records have none, most often Japanese ones. Those are ranked on their titles and labeled.

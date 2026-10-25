@@ -6,8 +6,8 @@ import type { Capabilities, QueryVariant, RankedPaper, SearchResponse } from "..
 const caps: Capabilities = { llm: false, embeddings: "ready", embeddingModel: "test-model", openalexKey: true, crossref: false };
 
 const variants: QueryVariant[] = [
-  { id: "openalex:en:0", lang: "en", kind: "original", text: "drought rice", searchQuery: "drought rice", concepts: ["drought", "rice"], topic: "drought", source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, matchCount: 2, kept: 2, error: null, skipped: null },
-  { id: "openalex:zh:1", lang: "zh", kind: "translated", text: "干旱 水稻", searchQuery: "干旱 水稻", concepts: ["干旱", "水稻"], topic: "干旱", source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, matchCount: 1, kept: 1, error: null, skipped: null },
+  { id: "openalex:en:0", lang: "en", kind: "original", text: "drought rice", searchQuery: "drought rice", concepts: ["drought", "rice"], topic: "drought", source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, matchCount: 2, kept: 2, hasMore: false, error: null, skipped: null },
+  { id: "openalex:zh:1", lang: "zh", kind: "translated", text: "干旱 水稻", searchQuery: "干旱 水稻", concepts: ["干旱", "水稻"], topic: "干旱", source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, matchCount: 1, kept: 1, hasMore: false, error: null, skipped: null },
 ];
 
 function paper(
@@ -54,7 +54,8 @@ const response: SearchResponse = {
   requestedMode: "hybrid",
   effectiveMode: "hybrid",
   availableModes: ["hybrid", "semantic", "keyword"],
-  filters: { publicationLanguages: [], yearFrom: null, yearTo: null, limit: 100 },
+  filters: { publicationLanguages: [], yearFrom: null, yearTo: null, limit: 100, pages: 1 },
+  canLoadMore: false,
   variants,
   candidateCount: 3,
   retrievedCount: 3,
@@ -172,4 +173,25 @@ test("map explains when there is no search yet", async ({ page }) => {
   await page.route("**/api/status", (route) => route.fulfill({ json: caps }));
   await page.goto("/map");
   await expect(page.getByRole("heading", { name: "No search to map yet" })).toBeVisible();
+});
+
+test("Load more searches one page deeper and shows more results", async ({ page }) => {
+  const bodies: Record<string, unknown>[] = [];
+  const extra = Array.from({ length: 3 }, (_, i) => paper(`D${i}`, `TEST Deeper paper ${i}`, "en", 0.2, 0.2, "openalex:en:0", "US"));
+  await mockApi(page, (body) => {
+    const b = body as Record<string, unknown>;
+    bodies.push(b);
+    return b.pages === 2
+      ? { status: 200, json: { ...response, papers: [...response.papers, ...extra], filters: { ...response.filters, pages: 2 }, canLoadMore: false } }
+      : { status: 200, json: { ...response, canLoadMore: true } };
+  });
+  await page.goto("/");
+  await page.getByLabel("Research question").fill("How does drought affect rice?");
+  await page.getByLabel("Research question").press("Enter");
+  await expect(page.getByTestId("paper-card")).toHaveCount(3);
+
+  await page.getByRole("button", { name: /Load 100 more results/ }).click();
+  await expect(page.getByTestId("paper-card")).toHaveCount(6);
+  expect(bodies.at(-1)).toMatchObject({ query: "How does drought affect rice?", pages: 2, limit: 100 });
+  await expect(page.getByText("No more results")).toBeVisible();
 });

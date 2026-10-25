@@ -9,7 +9,7 @@ import { applyLanguageOverrides, languageCheckText, needsLanguageCheck, type Lan
 import type { ExpansionResult } from "./query-expansion";
 import { availableModes, HYBRID_WEIGHTS, keywordScores, resolveMode, scorePapers, selectTopResults } from "./ranking";
 import type { Capabilities, Paper, QueryLanguage, QueryVariant, SearchRequest, SearchResponse } from "./types";
-import { QUERY_LANGUAGES } from "./types";
+import { MAX_PAGES, QUERY_LANGUAGES } from "./types";
 
 export type SearchOpenAlexFn = (params: OpenAlexSearchParams) => Promise<SearchResult>;
 export type CountByLanguageFn = (params: { search: string; yearFrom: number | null; yearTo: number | null }) => Promise<Record<string, number>>;
@@ -73,7 +73,7 @@ export const MIN_CANDIDATES_PER_LANGUAGE = 2;
  * fill the results in near-equal shares.
  */
 export function allocateCandidates(
-  variants: { available: number; matches: number | null }[],
+  variants: { available: number; matches: number | null; exhausted?: boolean }[],
   poolCap: number,
   floor = MIN_CANDIDATES_PER_LANGUAGE,
 ): number[] {
@@ -81,9 +81,11 @@ export function allocateCandidates(
   const total = weights.reduce((a, b) => a + b, 0);
   if (total === 0) return variants.map((v) => v.available);
   const shares = weights.map((w) => w / total);
+  // Only languages that could supply more limit the scale. One that already returned every match
+  // its query has (exhausted) contributes all of them, but must not shrink everyone else's share.
   let scale = poolCap;
   variants.forEach((v, i) => {
-    if (shares[i] > 0) scale = Math.min(scale, v.available / shares[i]);
+    if (shares[i] > 0 && !v.exhausted) scale = Math.min(scale, v.available / shares[i]);
   });
   return variants.map((v, i) => (v.available === 0 ? 0 : Math.min(v.available, Math.max(floor, Math.round(scale * shares[i])))));
 }
@@ -139,6 +141,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
     totalAvailable: null,
     matchCount: null,
     kept: 0,
+    hasMore: false,
     error: null,
     skipped:
       v.kind === "translated" && pubLangs.length && !pubLangs.includes(v.lang)
@@ -155,6 +158,8 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
         .catch(() => null)
     : Promise.resolve(null);
   const errors: unknown[] = [];
+  let deeperFailed = false;
+  const total = req.limit * req.pages;
   const lists = await Promise.all(
     variants.map(async (variant): Promise<Paper[]> => {
       if (variant.skipped) return [];
@@ -164,6 +169,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
       // language could fill all of it. Ranking, not retrieval, decides the language mix.
       const base = { languages, yearFrom: req.yearFrom, yearTo: req.yearTo, perPage: req.limit };
       try {
+        // Page 1 decides the query (strict, or broadened if sparse); deeper pages reuse it.
         let result = await deps.searchOpenAlex({ ...base, search: variant.searchQuery });
         for (const broader of relaxedQueries(variant.concepts)) {
           if (result.papers.length >= RELAX_THRESHOLD) break;
@@ -178,9 +184,22 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
             break; // Keep the best result so far.
           }
         }
-        variant.hitCount = result.papers.length;
+        const papers = [...result.papers];
+        let lastPageFull = result.papers.length >= req.limit;
+        for (let page = 2; page <= req.pages && lastPageFull; page++) {
+          try {
+            const next = await deps.searchOpenAlex({ ...base, search: variant.searchQuery, page });
+            papers.push(...next.papers);
+            lastPageFull = next.papers.length >= req.limit;
+          } catch {
+            deeperFailed = true;
+            break; // Keep the pages we have.
+          }
+        }
+        variant.hitCount = papers.length;
         variant.totalAvailable = result.total;
-        return result.papers.map((p, idx) => ({ ...p, retrievedBy: [{ variantId: variant.id, rank: idx + 1 }] }));
+        variant.hasMore = lastPageFull;
+        return papers.map((p, idx) => ({ ...p, retrievedBy: [{ variantId: variant.id, rank: idx + 1 }] }));
       } catch (err) {
         errors.push(err);
         variant.error = describeError(err);
@@ -198,8 +217,8 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
   }
   const retrievedCount = lists.reduce((n, l) => n + l.length, 0);
   const keep = allocateCandidates(
-    variants.map((v, i) => ({ available: lists[i].length, matches: v.matchCount })),
-    SHORTLIST_FACTOR * req.limit,
+    variants.map((v, i) => ({ available: lists[i].length, matches: v.matchCount, exhausted: !v.hasMore })),
+    SHORTLIST_FACTOR * total,
   );
   variants.forEach((v, i) => {
     lists[i] = lists[i].slice(0, keep[i]);
@@ -222,6 +241,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
       totalAvailable: null,
       matchCount: null,
       kept: 0,
+      hasMore: false,
       error: null,
       skipped: null,
     };
@@ -231,6 +251,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
         query: req.query,
         yearFrom: req.yearFrom,
         yearTo: req.yearTo,
+        // Crossref is a supplementary source; it contributes its first page only.
         rows: req.limit,
       });
       crossrefVariant.hitCount = result.papers.length;
@@ -255,6 +276,9 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
           ? "OpenAlex did not respond in time. Please try again."
           : "OpenAlex is currently unavailable. Please try again shortly.",
     );
+  }
+  if (deeperFailed) {
+    notices.push("Some deeper result pages could not be loaded from OpenAlex; showing the results retrieved so far.");
   }
   if (failed.length) {
     notices.push(
@@ -284,7 +308,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
   // translation, so semantic scores don't hinge on how well the model handles one language.
   const queryTexts = [...new Set(variants.filter((v) => v.source === "openalex").map((v) => v.text))];
   const bm25 = keywordScores(merged, variants);
-  const shortlistSize = SHORTLIST_FACTOR * req.limit;
+  const shortlistSize = SHORTLIST_FACTOR * total;
   let pool = merged;
   if (merged.length > shortlistSize) {
     // Stage 1: cheap title-only semantic scores over the whole pool. Keep every paper that is in
@@ -305,7 +329,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
   const ranked = scorePapers({ papers: pool, variants, semantic: semantic.scores, bm25 });
   const modes = availableModes(ranked, semantic.scores != null);
   const effectiveMode = resolveMode(req.mode, modes);
-  let selected = selectTopResults(ranked, modes, effectiveMode, req.limit, { variantId: variants[0].id, k: COMPARISON_K });
+  let selected = selectTopResults(ranked, modes, effectiveMode, total, { variantId: variants[0].id, k: COMPARISON_K });
 
   // 6. Where each returned paper was published (venue country), for the map.
   if (deps.sourceCountries) {
@@ -326,7 +350,8 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
     requestedMode: req.mode,
     effectiveMode,
     availableModes: modes,
-    filters: { publicationLanguages: pubLangs, yearFrom: req.yearFrom, yearTo: req.yearTo, limit: req.limit },
+    filters: { publicationLanguages: pubLangs, yearFrom: req.yearFrom, yearTo: req.yearTo, limit: req.limit, pages: req.pages },
+    canLoadMore: req.pages < MAX_PAGES && variants.some((v) => v.source === "openalex" && !v.skipped && !v.error && v.hasMore),
     variants,
     candidateCount: merged.length,
     retrievedCount,

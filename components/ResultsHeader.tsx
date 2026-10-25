@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { countryName } from "@/lib/countries";
 import { languageLabel, languageName } from "@/lib/languages";
-import type { RankingMode, SearchResponse } from "@/lib/types";
+import { resultCount, type RankingMode, type SearchResponse } from "@/lib/types";
 import { MODE_LABELS, RankingModeToggle } from "./RankingInfo";
 
 interface Props {
@@ -38,6 +38,10 @@ export function ResultsHeader({
   const f = response.filters;
   const sources = [...new Set(response.variants.filter((v) => !v.error && !v.skipped).map((v) => v.source))];
   const translatedCount = response.variants.filter((v) => v.kind === "translated" && !v.skipped && !v.error).length;
+  // Papers matching the queries that ran, summed over languages (an upper bound; overlaps exist).
+  const matching = response.variants
+    .filter((v) => v.source === "openalex" && !v.skipped && !v.error)
+    .reduce((n, v) => n + (v.totalAvailable ?? 0), 0);
   const degraded = mode !== response.effectiveMode || !response.availableModes.includes(mode);
 
   return (
@@ -76,7 +80,8 @@ export function ResultsHeader({
           {f.publicationLanguages.length ? `Published in: ${f.publicationLanguages.map((l) => languageName(l)).join(", ")}` : "All publication languages"}
         </Chip>
         <Chip>{f.yearFrom || f.yearTo ? `Years ${f.yearFrom ?? "…"}–${f.yearTo ?? "…"}` : "Any year"}</Chip>
-        <Chip>Top {f.limit} overall</Chip>
+        <Chip>Top {resultCount(f)} overall</Chip>
+        {matching > 0 && <Chip>~{matching.toLocaleString("en")} matching in OpenAlex</Chip>}
 
         {minScore > 0 && <Chip>Min score {minScore.toFixed(2)}</Chip>}
         {country && (
@@ -101,7 +106,7 @@ export function ResultsHeader({
       <p className="text-xs leading-relaxed text-muted-foreground">
         Candidates are drawn from each language in proportion to the size of its literature on the topic
         {response.literatureEstimate === "overall" ? " (estimated from each language’s overall share of OpenAlex)" : ""}, then the top{" "}
-        {f.limit} are chosen by relevance alone, so the language mix reflects where the research is. Scores compare papers
+        {resultCount(f)} are chosen by relevance alone, so the language mix reflects where the research is. Scores compare papers
         within this candidate pool and are not judgments of scientific quality. This is a sample of OpenAlex records, not an
         exhaustive search.
       </p>

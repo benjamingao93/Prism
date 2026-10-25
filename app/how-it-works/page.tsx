@@ -79,7 +79,9 @@ export default function HowItWorks() {
             search. Each language keeps at least its two best matches. Equal numbers per language would oversample small
             literatures: for “Shakespeare”, English has about 99,000 matches and Italian about 1,100, and equal shares would let
             Italian fill as much of the list as English whenever relevance can’t tell papers apart. All kept candidates are then
-            scored together and the top 100 (or 25 or 50) are shown, so the mix reflects where the research is.
+            scored together and the top 100 (or 25 or 50) are shown, so the mix reflects where the research is. “Load more”
+            fetches the next page in every language and re-ranks the whole set, up to 1,000 results; earlier pages, translations
+            and scores come from the cache, so each step only scores the new papers.
           </p>
         </Step>
 

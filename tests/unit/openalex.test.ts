@@ -94,6 +94,13 @@ describe("buildOpenAlexUrl", () => {
     expect(url.searchParams.has("api_key")).toBe(false);
   });
 
+  it("requests deeper pages for Load more", () => {
+    const url = new URL(buildOpenAlexUrl({ search: "x", languages: [], yearFrom: null, yearTo: null, perPage: 100, page: 3 }, { apiKey: null, mailto: null }));
+    expect(url.searchParams.get("page")).toBe("3");
+    const first = new URL(buildOpenAlexUrl({ search: "x", languages: [], yearFrom: null, yearTo: null, perPage: 100, page: 1 }, { apiKey: null, mailto: null }));
+    expect(first.searchParams.has("page")).toBe(false);
+  });
+
   it("omits the filter parameter when no filters apply", () => {
     const url = new URL(buildOpenAlexUrl({ search: "x", languages: [], yearFrom: null, yearTo: null, perPage: 10 }, { apiKey: "k", mailto: null }));
     expect(url.searchParams.has("filter")).toBe(false);

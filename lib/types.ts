@@ -15,6 +15,13 @@ export const PUBLICATION_LANGUAGES = QUERY_LANGUAGES;
 
 /** How many top-ranked papers to return, across all languages combined. */
 export const RESULT_LIMITS = [25, 50, 100] as const;
+/** "Load more" fetches at most this many pages (1,000 results at the default page size). */
+export const MAX_PAGES = 10;
+
+/** Number of results a response holds for each ranking mode: page size × pages loaded. */
+export function resultCount(filters: { limit: number; pages: number }): number {
+  return filters.limit * filters.pages;
+}
 
 
 export const RANKING_MODES = ["hybrid", "semantic", "keyword"] as const;
@@ -36,6 +43,11 @@ export const SearchRequestSchema = z
      * up to N candidates, so no language is capped below what it would take to fill the list.
      */
     limit: z.number().int().min(5).max(100).default(100),
+    /**
+     * How many pages deep to search ("Load more"). Each page adds up to `limit` candidates per
+     * language and `limit` more results; earlier pages come from the server cache.
+     */
+    pages: z.number().int().min(1).max(10).default(1),
   })
   .refine((r) => r.yearFrom == null || r.yearTo == null || r.yearFrom <= r.yearTo, {
     message: "Start year must be before end year",
@@ -117,6 +129,8 @@ export interface QueryVariant {
   matchCount: number | null;
   /** Candidates kept for ranking after proportional allocation. */
   kept: number;
+  /** True when the last page fetched for this variant was full, so deeper pages may exist. */
+  hasMore: boolean;
   error: string | null;
   skipped: string | null;
 }
@@ -169,7 +183,10 @@ export interface SearchResponse {
     yearFrom: number | null;
     yearTo: number | null;
     limit: number;
+    pages: number;
   };
+  /** True when a deeper page could add results (some language has more matches to fetch). */
+  canLoadMore: boolean;
   variants: QueryVariant[];
   /** Unique candidates ranked (after allocation and deduplication), before taking the top `limit`. */
   candidateCount: number;
@@ -180,7 +197,7 @@ export interface SearchResponse {
   /**
    * The top `limit` papers under every available ranking mode (their union), plus the
    * original-query baseline's top papers, so switching modes client-side stays exact.
-   * Sort by a mode and take the first `filters.limit` to get that mode's results.
+   * Sort by a mode and take the first `resultCount(filters)` to get that mode's results.
    */
   papers: RankedPaper[];
   capabilities: Capabilities;

@@ -44,6 +44,7 @@ const v = (id: string, lang: string, kind: "original" | "translated"): QueryVari
   totalAvailable: null,
   matchCount: null,
   kept: 0,
+  hasMore: false,
   error: null,
   skipped: null,
 });

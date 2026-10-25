@@ -12,6 +12,7 @@ import world from "world-atlas/countries-110m.json";
 import { Button } from "@/components/ui/button";
 import { alpha2FromNumeric, countByCountry, countryName } from "@/lib/countries";
 import { sortByMode } from "@/lib/ranking";
+import { resultCount } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppState } from "./AppState";
 import { MODE_LABELS } from "./RankingInfo";
@@ -66,7 +67,7 @@ export function PublicationMap() {
   const data = useMemo(() => {
     if (!lastSearch) return null;
     const { response, mode } = lastSearch;
-    const top = sortByMode(response.papers, mode).slice(0, response.filters.limit);
+    const top = sortByMode(response.papers, mode).slice(0, resultCount(response.filters));
     const { countries, unknown } = countByCountry(top);
     return {
       response,

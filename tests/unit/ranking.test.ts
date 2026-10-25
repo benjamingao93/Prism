@@ -31,8 +31,8 @@ function paper(id: string, title: string, abstract: string | null, language = "e
 }
 
 const variants: QueryVariant[] = [
-  { id: "v-en", lang: "en", kind: "original", text: "drought stress rice yield", searchQuery: "drought stress rice yield", concepts: ["drought", "stress", "rice", "yield"], topic: "drought", source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, matchCount: 2, kept: 2, error: null, skipped: null },
-  { id: "v-zh", lang: "zh", kind: "translated", text: "干旱胁迫对水稻产量的影响", searchQuery: "干旱 水稻 产量", concepts: ["干旱", "水稻", "产量"], topic: "干旱", source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, matchCount: 1, kept: 1, error: null, skipped: null },
+  { id: "v-en", lang: "en", kind: "original", text: "drought stress rice yield", searchQuery: "drought stress rice yield", concepts: ["drought", "stress", "rice", "yield"], topic: "drought", source: "openalex", relaxed: false, hitCount: 2, totalAvailable: 2, matchCount: 2, kept: 2, hasMore: false, error: null, skipped: null },
+  { id: "v-zh", lang: "zh", kind: "translated", text: "干旱胁迫对水稻产量的影响", searchQuery: "干旱 水稻 产量", concepts: ["干旱", "水稻", "产量"], topic: "干旱", source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, matchCount: 1, kept: 1, hasMore: false, error: null, skipped: null },
 ];
 
 describe("tokenize", () => {

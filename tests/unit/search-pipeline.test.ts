@@ -236,6 +236,45 @@ describe("runSearch", () => {
     expect(res.papers.length).toBeGreaterThan(0);
   });
 
+  it("loads deeper pages only for languages whose last page was full", async () => {
+    // English has 3 full pages of 5; Chinese has a single partial page.
+    const enPage = (page: number) => Array.from({ length: 5 }, (_, i) => p(900 + page * 10 + i, { language: "en" }));
+    const calls: { lang: string; page: number }[] = [];
+    const d = deps(async (params) => {
+      const lang = params.languages[0] ?? "en";
+      calls.push({ lang, page: params.page ?? 1 });
+      if (lang === "zh") return { papers: [p(990, { language: "zh" }), p(991, { language: "zh" })], total: 2 };
+      if (lang === "es") return { papers: [], total: 0 };
+      return { papers: enPage(params.page ?? 1), total: 15 };
+    }, { countByLanguage: async () => ({ en: 1000, zh: 1000 }) });
+
+    const one = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 5, pages: 1 }), d);
+    expect(one.canLoadMore).toBe(true);
+    expect(sortByMode(one.papers, one.effectiveMode).slice(0, 5)).toHaveLength(5);
+
+    calls.length = 0;
+    const two = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 5, pages: 2 }), d);
+    expect(calls.filter((c) => c.page === 2).map((c) => c.lang)).toEqual(["en"]); // Chinese had no more
+    expect(two.filters).toMatchObject({ limit: 5, pages: 2 });
+    expect(sortByMode(two.papers, two.effectiveMode).slice(0, 10).length).toBeGreaterThan(5);
+    expect(two.variants.find((v) => v.lang === "en")!.hitCount).toBe(10);
+  });
+
+  it("reports no more results when every language's last page was partial", async () => {
+    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 10 }), deps(byLanguage));
+    expect(res.canLoadMore).toBe(false);
+  });
+
+  it("keeps the pages it has, with a notice, when a deeper page fails", async () => {
+    const d = deps(async (params) => {
+      if ((params.page ?? 1) > 1) throw new UpstreamError("OpenAlex", "http", "HTTP 500", 500);
+      return { papers: Array.from({ length: 5 }, (_, i) => p(950 + i)), total: 50 };
+    });
+    const res = await runSearch(SearchRequestSchema.parse({ query: "drought rice", limit: 5, pages: 2 }), d);
+    expect(res.papers.length).toBeGreaterThan(0);
+    expect(res.notices.some((n) => n.includes("deeper result pages could not be loaded"))).toBe(true);
+  });
+
   it("survives one failed variant and reports it", async () => {
     const res = await runSearch(request, deps(byLanguage));
     const es = res.variants.find((v) => v.lang === "es")!;
@@ -336,6 +375,15 @@ describe("allocateCandidates", () => {
 
   it("gives languages with no full-query matches (only broadened ones) just the floor", () => {
     expect(allocateCandidates([{ available: 40, matches: 400 }, { available: 40, matches: 0 }], 100)).toEqual([40, 2]);
+  });
+
+  it("does not let a language that returned all its matches shrink the others", () => {
+    // Equal literatures, but the second language's query matched only 2 papers (exhausted).
+    expect(allocateCandidates([{ available: 100, matches: 1000 }, { available: 2, matches: 1000, exhausted: true }], 300)).toEqual([
+      100, 2,
+    ]);
+    // Not exhausted: it genuinely limits the common scale, as before.
+    expect(allocateCandidates([{ available: 100, matches: 1000 }, { available: 2, matches: 1000 }], 300)).toEqual([2, 2]);
   });
 
   it("keeps everything when no match counts are known", () => {

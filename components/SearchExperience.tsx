@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, RefreshCw } from "lucide-react";
+import { ChevronDown, Loader2, RefreshCw } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,15 @@ import { compareBaseline, computeCoverage } from "@/lib/comparison";
 import { filterByMinScore, filterPapers } from "@/lib/filters";
 import { languageName } from "@/lib/languages";
 import { sortByMode } from "@/lib/ranking";
-import { QUERY_LANGUAGES, type Capabilities, type RankedPaper, type RankingMode, type SearchResponse } from "@/lib/types";
+import {
+  MAX_PAGES,
+  QUERY_LANGUAGES,
+  resultCount,
+  type Capabilities,
+  type RankedPaper,
+  type RankingMode,
+  type SearchResponse,
+} from "@/lib/types";
 import { useAppState } from "./AppState";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { PaperCard, type PaperTranslation } from "./PaperCard";
@@ -37,6 +45,8 @@ export function SearchExperience() {
   /** Publication-venue country filter (ISO alpha-2), set from the map tab. */
   const [country, setCountry] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [translations, setTranslations] = useState<Record<string, PaperTranslation>>({});
   const abortRef = useRef<AbortController | null>(null);
   const requestedRef = useRef(new Set<string>());
@@ -100,6 +110,7 @@ export function SearchExperience() {
         setCaps(res.capabilities);
         setRefine([]);
         setCountry(null);
+        setLoadMoreError(null);
         setVisible(PAGE_SIZE);
         generationRef.current += 1;
         requestedRef.current = new Set();
@@ -113,6 +124,34 @@ export function SearchExperience() {
     },
     [queryLanguage, settings, setLastSearch],
   );
+
+  // "Load more": the same search one page deeper in every language. Earlier pages, translations
+  // and scores come from the server cache, so only new candidates cost time. The whole set is
+  // re-ranked, so results already on screen can move.
+  const loadMore = useCallback(async () => {
+    if (!response || loadingMore) return;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const res = await api.search({
+        query: response.query,
+        queryLanguage: response.queryLanguage,
+        publicationLanguages: response.filters.publicationLanguages,
+        yearFrom: response.filters.yearFrom,
+        yearTo: response.filters.yearTo,
+        mode: settings.mode,
+        limit: response.filters.limit,
+        pages: response.filters.pages + 1,
+      });
+      setResponse(res);
+      setLastSearch({ response: res, mode: settings.mode });
+      setVisible((v) => v + PAGE_SIZE);
+    } catch (err) {
+      setLoadMoreError(err instanceof ClientApiError ? err.message : "Could not load more results.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [response, loadingMore, settings.mode, setLastSearch]);
 
   // React to the URL: shareable ?q= links, and returning from the map with ?country=. Next keeps
   // this page alive (hidden) while another tab is shown, so this must follow URL changes rather
@@ -168,7 +207,7 @@ export function SearchExperience() {
 
   // The top N for the active mode: the response carries each mode's top N, so this is exact.
   const topResults = useMemo(
-    () => (response ? sortByMode(response.papers, mode).slice(0, response.filters.limit) : []),
+    () => (response ? sortByMode(response.papers, mode).slice(0, resultCount(response.filters)) : []),
     [response, mode],
   );
 
@@ -388,13 +427,34 @@ export function SearchExperience() {
                       onTranslateAbstract={translateAbstract}
                     />
                   ))}
-                  {displayed.length > visible && (
-                    <div className="flex justify-center pt-2">
+                  <div className="flex flex-col items-center gap-1.5 pt-2 text-center">
+                    {displayed.length > visible ? (
                       <Button variant="outline" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
                         <ChevronDown /> Show more ({displayed.length - visible} remaining)
                       </Button>
-                    </div>
-                  )}
+                    ) : response.canLoadMore ? (
+                      <>
+                        <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                          {loadingMore ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+                          {loadingMore ? "Searching deeper in every language…" : `Load ${response.filters.limit} more results`}
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          Searches one page deeper in every language and re-ranks everything together.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {response.filters.pages >= MAX_PAGES
+                          ? `That's the deepest Prism searches (${resultCount(response.filters)} results).`
+                          : "No more results: every language's matches have been retrieved."}
+                      </p>
+                    )}
+                    {loadMoreError && (
+                      <p role="alert" className="text-xs text-destructive">
+                        {loadMoreError}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
               <SourceNote />
