@@ -1,49 +1,86 @@
-# prism
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/prism-logo-dark.svg">
+    <img src="docs/prism-logo-light.svg" alt="prism" width="260">
+  </picture>
+</p>
 
-**One question. Every language.**
+<p align="center"><strong>One question. Every language.</strong></p>
 
-Prism is a multilingual research search engine that helps you find the scientific research your language might otherwise cause you to miss. You ask a question in any of 15 languages (English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian and Arabic). It expands the question into keyword queries in all of them, retrieves candidates from [OpenAlex](https://openalex.org) in each language, ranks the whole pool together with multilingual embeddings plus language-aware BM25, and shows the 100 most relevant papers. There is no per-language quota. Each result explains why it matched.
+<p align="center">
+  A multilingual research search engine that finds the scientific papers your language might otherwise cause you to miss.
+</p>
 
-All results are live OpenAlex records. The app contains no demo data, and missing abstracts, DOIs and languages are shown as missing.
+![Prism results for "Drought-resistant rice varieties and agricultural adaptation", with papers ranked across languages and a coverage panel showing the language mix](docs/screenshot.png)
+
+## Why Prism
+
+Science is published in many languages, but most literature discovery happens through English queries. A question about drought and rice yields misses papers that describe the same experiments as 干旱胁迫 and 水稻产量, or sequía and rendimiento del arroz. Translation tools help you read what you have already found. Prism helps you find it in the first place.
+
+## What it does
+
+- **Ask in any of 15 languages:** English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian and Arabic.
+- **Search all of them at once.** Gemini turns your question into keyword queries in every language, and each query searches [OpenAlex](https://openalex.org) for papers published in that language.
+- **Rank across languages.** Results are scored with multilingual embeddings and language-aware BM25 keyword matching, and the 100 most relevant are shown, whatever their language.
+- **Show its work.** Each result explains why it matched: semantic similarity, matched terms, and which language's query found it. A coverage panel shows the language mix and every query that ran.
+- **Keep originals first.** Titles and abstracts can be machine-translated into your language; translations are always labeled and shown next to the original. Optional AI summaries use only the abstract and say what it doesn't state.
+- **Use real data only.** Every result is a live OpenAlex record. Missing abstracts, DOIs and languages are shown as missing, never filled in.
+
+Also included: Hybrid / Semantic / Keyword ranking modes, filters for publication language, year and minimum relevance, a comparison against an original-language-only search, and a reading list stored in your browser.
 
 ## Quick start
 
 ```bash
 npm install
-cp .env.example .env.local   # optional: add GEMINI_API_KEY and OPENALEX_API_KEY
+cp .env.example .env.local   # add GEMINI_API_KEY and OPENALEX_API_KEY (see below)
 npm run dev                  # http://localhost:3000
 ```
 
-On first start the server downloads the multilingual embedding model (~120 MB) into `.cache/models` in the background. Until it is ready, searches fall back to keyword ranking and say so.
+On first start the server downloads the multilingual embedding model (~120 MB) into `.cache/models` in the background. Until it is ready, searches use keyword ranking and say so.
 
-## What needs configuration
+### Configuration
+
+Every variable is optional, and the app tells you when a feature is off.
 
 | Feature | Without configuration | Enable with |
 | --- | --- | --- |
-| OpenAlex retrieval | Works. Keyless budget is $0.10/day, shared per IP (~100 searches) | `OPENALEX_API_KEY` (free, 10× budget) |
-| Multilingual semantic ranking | Works (local model) | on by default; `EMBEDDINGS_ENABLED=false` disables |
-| Keyword (BM25) ranking | Works | none needed |
-| Cross-language query expansion | **Off.** Only the original query is searched, with a notice | `GEMINI_API_KEY` |
-| Title/abstract translation, abstract summaries | **Off.** Controls are disabled with an explanation | `GEMINI_API_KEY` |
-| Crossref supplementary results | Off | `CROSSREF_ENABLED=true` |
+| Paper search (OpenAlex) | Works, but all keyless users on your network share about 100 searches a day | `OPENALEX_API_KEY`: free, ~1,000 a day ([get one](https://openalex.org/settings/api)) |
+| Searching in 15 languages | **Off.** Only your original question is searched | `GEMINI_API_KEY` ([get one](https://aistudio.google.com/apikey)) |
+| Translated titles, abstracts and summaries | **Off.** The controls explain why | `GEMINI_API_KEY` |
+| Multilingual semantic ranking | Works (local model, no key) | On by default; `EMBEDDINGS_ENABLED=false` turns it off |
+| Crossref as a supplementary source | Off | `CROSSREF_ENABLED=true` |
 
-Each search makes one OpenAlex keyword search per language (15), one request to size each language's literature, plus up to two broader retries for languages with few hits, so typically 16–30 requests. With a free key (about 1,000 searches a day) that is roughly 40–60 Prism searches a day; without a key, only a handful. Narrow the publication languages in Search settings to use fewer. Source responses are cached in memory for 24 hours.
+Gemini tasks default to `gemini-3.8-flash`. If a model is overloaded or rate limited, Prism falls back through `LLM_FALLBACK_MODELS` (default `gemini-3.6-flash,gemini-3.5-flash-lite`) and labels translations and summaries with the model that produced them.
 
-Both LLM tasks default to `gemini-3.8-flash` (Google Gemini API, structured JSON output). Override them with `LLM_MODEL_FAST` / `LLM_MODEL_SUMMARY`. If a model is overloaded, rate limited or times out, the next model in `LLM_FALLBACK_MODELS` (default `gemini-3.6-flash,gemini-3.5-flash-lite`) is tried, and translations and summaries report which model produced them.
+A search makes roughly 16–30 OpenAlex requests: one per language, one to size each language's literature, and a few broader retries for sparse languages. With a free key that is about 40–60 Prism searches a day. Selecting fewer publication languages uses fewer, and responses are cached for 24 hours.
 
 ## How it works
 
-1. **Expand:** Gemini turns the question into 2–5 concepts per language (each may be a multi-word term), ordered by importance. The original query is always kept. (`lib/query-expansion.ts`)
-2. **Retrieve:** one OpenAlex `search.title_and_abstract` request per variant, up to as many candidates as the result limit (100 by default), so any single language could fill the whole list. Translated variants are restricted to their own `language:` tag. Year and language filters are applied server-side. A sparse query (fewer than 5 hits) is broadened to its two most essential concepts, then to the core concept (at most two extra requests); phrases are never split. (`lib/openalex.ts`, `lib/search.ts`)
-3. **Merge and select:** papers are deduplicated by DOI, then OpenAlex ID, then exact normalized title plus year. Records with conflicting DOIs are never merged. Per-variant provenance is kept. Candidates are then drawn from each language in proportion to its literature on the topic (one OpenAlex `group_by=language` request counting works that match any language's distinctive subject term; each language's overall OpenAlex share as a fallback; at least 2 per language), the federated-search approach known as relevant-document distribution estimation. All kept candidates are ranked together and the top 100 (25/50/100) are returned, so the language mix reflects where the research is. (`lib/deduplication.ts`, `selectTopResults` in `lib/ranking.ts`)
-4. **Score:**
-   - Two stages when the pool exceeds 3× the limit: a title-only semantic pass plus BM25 shortlists the top 3× under any mode (language-blind), then the shortlist is scored on title + abstract. Text is truncated at 128 tokens, matching the model's reference configuration.
-   - Cosine similarity between the question (the average embedding of the original and all its translations) and each paper's text, taking the better of title alone and title + abstract, so having an abstract never counts against a paper, embedded with `paraphrase-multilingual-MiniLM-L12-v2` via Transformers.js. (`lib/embeddings.ts`)
-   - BM25 using ICU word segmentation (handles CJK), taking each paper's best score over all query variants. Each query's score is divided by its maximum possible score, so every language is scored on the same 0–1 scale instead of rare-in-the-pool languages getting inflated IDF. Length is normalized within title-only and title+abstract groups separately, and scoring uses each language's full concept list even when its search was broadened. (`lib/bm25.ts`, `lib/tokenize.ts`)
-   - Hybrid = 0.7 · semantic + 0.3 · keyword after min-max normalization. (`lib/ranking.ts`)
-5. **Explain and present:** explanations come only from computed facts. Translations are labeled and shown next to the original. Coverage stats and the baseline comparison are computed from the actual result set. (`lib/comparison.ts`)
+1. **Expand.** Gemini rewrites the question as 2–5 key concepts in each language, most essential first, plus the main subject term (asthma, 哮喘, asma …). Your original question is always searched too.
+2. **Retrieve.** Each language's query searches OpenAlex titles and abstracts, restricted to papers in that language. A query that finds fewer than five papers is broadened by dropping its least essential concepts, never by splitting a phrase.
+3. **Size each literature.** One OpenAlex request counts each language's papers on the subject. Candidates are kept from each language in proportion to that count, with at least two per language. This is how federated search engines merge collections of different sizes.
+4. **Score.** Every candidate is scored against the question in all its languages:
+   - **Semantic:** cosine similarity from `paraphrase-multilingual-MiniLM-L12-v2`, run locally with Transformers.js.
+   - **Keyword:** BM25 over ICU-segmented text, so Chinese and Japanese are split into words.
+   - **Hybrid (default):** 70% semantic plus 30% keyword. These weights are tunable starting values, not validated constants.
+5. **Explain.** The top results are shown with explanations built only from computed scores and retrieval facts.
 
-The sanity check of cross-language similarity (`npm run check:embeddings`) shows the following cosines against the drought/rice question. These are seven sentences, not a benchmark:
+### How ranking stays fair across languages
+
+Testing showed several ways a multilingual ranker can quietly favour one language. Each one is addressed:
+
+| Problem | Fix |
+| --- | --- |
+| Equal candidates per language oversample small literatures. For "Shakespeare", English has ~79,000 papers and Italian ~1,100 | Candidates are drawn in proportion to each language's literature on the topic |
+| In a mostly-English pool, other languages' words look rare, which inflates their BM25 scores | Each query's score is divided by its own maximum, putting every language on the same 0–1 scale |
+| Short title-only records look like dense keyword matches | Length is normalized separately for title-only and title-plus-abstract records |
+| Abstracts dilute embedding similarity, which favours papers without one | Each paper is scored on the better of its title alone and title plus abstract |
+| A broadened query is easier to match than the full question | Keyword scoring always uses every concept, even when the search was broadened |
+| One language's phrasing of the question skews similarity | The question is embedded in every language and averaged |
+
+Results for "Shakespeare", for example, come out about 71% English, close to English's share of that literature. A topic with a large Chinese literature still surfaces Chinese papers.
+
+Cross-language similarity check (`npm run check:embeddings`) against "How does drought stress affect rice crop yields?". These are seven sentences, not a benchmark:
 
 | Text | Cosine |
 | --- | --- |
@@ -52,46 +89,48 @@ The sanity check of cross-language similarity (`npm run check:embeddings`) shows
 | Portuguese translation | 0.83 |
 | Spanish translation | 0.83 |
 | Japanese translation | 0.71 |
-| Unrelated topics | about 0 |
+| Unrelated topics | ~0 |
 
-## Project layout
-
-```
-app/                  pages (/, /how-it-works, /about) and API routes
-  api/search          validate → expand → retrieve → merge → score → JSON
-  api/translate       batch title/abstract translation (cached, skips text already in target language)
-  api/summarize       abstract-only structured summary
-  api/status          capability flags (LLM, embeddings state, keys present)
-components/           UI (SearchExperience, PaperCard, SearchCoverage, ComparisonPanel, ...)
-lib/                  retrieval, ranking, translation and shared types; no UI code
-tests/unit            Vitest suites with mocked APIs
-tests/live            opt-in live check against real OpenAlex (npm run test:live)
-e2e/                  Playwright workflow tests with mocked API responses
-```
-
-## Scripts
+## Development
 
 ```bash
 npm run dev               # development server
 npm run build && npm start
 npm run lint
 npm run typecheck
-npm test                  # unit tests (mocked; no network)
-npm run test:e2e          # Playwright, desktop + mobile (mocked API)
-npm run test:live         # real OpenAlex + local model, hand-written query variants (uses API budget)
-npm run check:embeddings  # cross-language similarity sanity check
+npm test                  # unit tests (mocked APIs, no network)
+npm run test:e2e          # Playwright, desktop and mobile (mocked API)
+npm run test:live         # real OpenAlex + local model (uses API budget)
+npm run check:embeddings  # cross-language similarity check
+```
+
+Built with Next.js 16, TypeScript, Tailwind CSS, shadcn/ui, Transformers.js and the Google Gen AI SDK.
+
+```
+app/            pages (/, /how-it-works, /about) and API routes
+  api/search      validate → expand → retrieve → allocate → score → JSON
+  api/translate   batch title and abstract translation (cached)
+  api/summarize   abstract-only structured summary
+  api/status      capability flags (LLM, embedding model, keys present)
+components/     UI (SearchExperience, PaperCard, SearchCoverage, Logo, …)
+lib/            retrieval, ranking, translation and shared types; no UI code
+tests/unit      Vitest suites
+tests/live      opt-in live checks against OpenAlex
+e2e/            Playwright workflow tests
+docs/           logo and screenshot used in this README
 ```
 
 ## Limitations
 
-- Coverage is limited to OpenAlex. Regional journals, theses and non-DOI literature are underrepresented.
-- OpenAlex language tags are machine-detected and sometimes wrong. Some `zh`-tagged works have English-only metadata.
-- Many records lack abstracts. Those are scored on titles only and labeled as such.
-- Each language contributes at most 100 candidates (OpenAlex's top matches in that language), so results are a sample, not an exhaustive search.
-- Literature sizes are estimated from OpenAlex counts for a machine-translated subject term; they depend on the term chosen and on OpenAlex's machine-detected language tags.
-- Large pools are shortlisted by title before full scoring; a paper with an uninformative title can occasionally miss the shortlist.
-- Many records in some languages (notably Japanese) have no abstract in OpenAlex; they are ranked on titles alone and labeled.
-- A fresh search ranks up to ~1,500 candidates on the CPU and typically takes 10–20 seconds; repeats are cached.
-- Machine-translated queries can shift technical meaning. Every variant is shown in the UI.
-- Ranking is multilingual but not perfectly language-neutral (see the Japanese similarity above).
-- The in-memory caches reset when the server restarts. The reading list lives in browser `localStorage`.
+- **Coverage:** Prism searches OpenAlex only. Regional journals, theses and non-DOI literature are underrepresented, and each language contributes at most 100 candidates, so results are a sample, not an exhaustive search.
+- **Language tags:** OpenAlex assigns these automatically, and they are sometimes wrong.
+- **Literature sizes:** these are estimates from OpenAlex counts for a machine-translated subject term.
+- **Missing abstracts:** many records have none, most often Japanese ones. Those are ranked on their titles and labeled.
+- **Translation drift:** machine-translated queries can shift technical meaning. Every query is shown in the coverage panel.
+- **Speed:** a fresh search scores up to ~1,500 candidates on the CPU and takes about 5–20 seconds. Repeats are cached.
+- **Not fully language-neutral:** ranking is multilingual but not perfectly language-neutral. Note the lower Japanese similarity above.
+- **Storage:** caches are in memory and reset on restart. The reading list lives in your browser's `localStorage`.
+
+## Data and credits
+
+Paper metadata comes from [OpenAlex](https://openalex.org) (CC0). The embedding model is [paraphrase-multilingual-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2) from sentence-transformers. Query expansion, translation and summaries use the [Gemini API](https://ai.google.dev).
