@@ -1,10 +1,12 @@
 import { geoEquirectangular, geoPath } from "d3-geo";
 import type { Feature, FeatureCollection, Geometry, Polygon, Position } from "geojson";
-import { feature } from "topojson-client";
-import type { GeometryCollection, Topology } from "topojson-specification";
+import { feature, merge } from "topojson-client";
+import type { GeometryCollection, MultiPolygon as TopoMultiPolygon, Polygon as TopoPolygon, Topology } from "topojson-specification";
 import { alpha2FromNumeric } from "@/lib/countries";
 
 const FLAG_ASPECT = 3 / 2; // country-flag-icons' 3x2 set
+const OCEAN = "#8fd6f5"; // flat, light, cartoon water
+const LAND = "#efe2bd"; // land without a flag (disputed areas)
 
 /** world-atlas shapes without an ISO numeric id that still have an unambiguous flag. */
 const CODES_BY_NAME: Record<string, string> = { Kosovo: "XK", "Indian Ocean Ter.": "AU" };
@@ -34,19 +36,20 @@ function polygonsOf(geometry: Geometry): Polygon[] {
 }
 
 /**
- * Paint an equirectangular Earth texture with each country filled by its flag, over `base`
- * (the Blue Marble image, which keeps the oceans and any unflagged land). Every landmass of a
- * country gets its own flag, sized to cover that piece; flags are widened by 1/cos(latitude) so
- * they read with their true proportions once wrapped onto the sphere.
+ * Paint a cartoon equirectangular Earth texture: flat light ocean, each country filled by its
+ * flag, a soft white halo along the coasts. Every landmass of a country gets its own flag, sized
+ * to cover that piece; flags are widened by 1/cos(latitude) so they read with their true
+ * proportions once wrapped onto the sphere.
  */
-export async function paintFlagTexture(base: CanvasImageSource, width: number): Promise<HTMLCanvasElement> {
+export async function paintFlagTexture(width: number): Promise<HTMLCanvasElement> {
   const height = width / 2;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("2D canvas unavailable");
-  ctx.drawImage(base, 0, 0, width, height);
+  ctx.fillStyle = OCEAN;
+  ctx.fillRect(0, 0, width, height);
 
   const world = (await import("world-atlas/countries-50m.json")).default;
   const topology = world as unknown as Topology<{ countries: GeometryCollection<{ name: string }> }>;
@@ -65,6 +68,17 @@ export async function paintFlagTexture(base: CanvasImageSource, width: number): 
     .scale(width / (2 * Math.PI))
     .translate([width / 2, height / 2]);
   const path = geoPath(projection, ctx);
+
+  // Coastal halo first (half of it is then covered by the land), then plain land underneath the flags.
+  const land = merge(topology, topology.objects.countries.geometries as (TopoPolygon | TopoMultiPolygon)[]);
+  ctx.beginPath();
+  path(land);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+  ctx.lineWidth = width / 700;
+  ctx.lineJoin = "round";
+  ctx.stroke();
+  ctx.fillStyle = LAND;
+  ctx.fill();
 
   for (const { geometry, code } of countries) {
     const flag = flags.get(code);

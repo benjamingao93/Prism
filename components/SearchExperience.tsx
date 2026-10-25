@@ -22,9 +22,8 @@ import { useAppState } from "./AppState";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { PaperCard, type PaperTranslation } from "./PaperCard";
 import { ResultsHeader } from "./ResultsHeader";
-import { FlagCollage } from "./Flags";
 import { SearchBar } from "./SearchBar";
-import { SpaceHero } from "./space/SpaceHero";
+import { SpaceHero, type HeroPhase } from "./space/SpaceHero";
 import { SearchCoverage } from "./SearchCoverage";
 import { DEFAULT_SETTINGS, SearchSettings, type SearchSettingsValue } from "./SearchSettings";
 import { ErrorState, InitialState, NoResults, ResultSkeleton, SourceNote } from "./SearchStates";
@@ -49,9 +48,9 @@ export function SearchExperience() {
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  /** True while the landing's globe zooms into the results (LAUNCH_MS). */
-  const [launching, setLaunching] = useState(false);
-  const endLaunch = useCallback(() => setLaunching(false), []);
+  /** True from a search started on the landing until its globe has dissolved into the results. */
+  const [fromHero, setFromHero] = useState(false);
+  const endHero = useCallback(() => setFromHero(false), []);
   const [translations, setTranslations] = useState<Record<string, PaperTranslation>>({});
   const abortRef = useRef<AbortController | null>(null);
   const requestedRef = useRef(new Set<string>());
@@ -314,20 +313,26 @@ export function SearchExperience() {
       settings.limit !== response.filters.limit ||
       queryLanguage !== response.queryLanguage);
 
-  // While the globe zooms in, hold the (heavy) results render so the animation stays smooth.
-  const hasResults = status === "success" && response && !launching;
-  const showSkeleton = status === "loading" || (status === "success" && launching);
-  // Before the first search the page is the space landing; searching launches into the results.
+  const hasResults = status === "success" && response;
+  // Before the first search the page is the space landing. A search started there keeps the
+  // landing up, its globe spinning, until the results are ready; then it dissolves into them.
   const landing = status === "idle";
+  const heroPhase: HeroPhase = !fromHero ? "idle" : status === "loading" ? "searching" : "exiting";
+  const showHero = landing || fromHero;
 
   const submit = () => {
     if (landing) {
       if (query.trim().length < 2) return;
       window.scrollTo({ top: 0 });
-      setLaunching(true);
+      setFromHero(true);
     }
     void runSearch(query);
   };
+
+  const searchingNote =
+    caps?.embeddings === "loading"
+      ? "Retrieving papers… the embedding model is still loading on first run."
+      : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking candidates from each in proportion to its literature…`;
 
   const renderSearchControls = (compact: boolean) => (
     <>
@@ -363,12 +368,18 @@ export function SearchExperience() {
 
   return (
     <>
-      {(landing || launching) && (
-        <SpaceHero launching={launching} onLaunchEnd={endLaunch} side={<FlagCollage className="h-full" />}>
+      {showHero && (
+        <SpaceHero phase={heroPhase} onExitEnd={endHero}>
           {renderSearchControls(false)}
+          {heroPhase !== "idle" && (
+            <p className="flex items-center gap-2 px-1 text-sm text-white/70" role="status">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              {searchingNote}
+            </p>
+          )}
         </SpaceHero>
       )}
-      {landing ? (
+      {landing || heroPhase === "searching" ? (
         <div className="mx-auto max-w-6xl space-y-4 px-4 py-12 sm:px-6">
           <CapabilityNotices caps={caps} />
           <InitialState />
@@ -378,15 +389,7 @@ export function SearchExperience() {
           <section className="space-y-3 pt-6 pb-5">{renderSearchControls(true)}</section>
 
         <div className="pb-16">
-          {showSkeleton && (
-            <ResultSkeleton
-              note={
-                caps?.embeddings === "loading"
-                  ? "Retrieving papers… the embedding model is still loading on first run."
-                  : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking candidates from each in proportion to its literature…`
-              }
-            />
-          )}
+          {status === "loading" && <ResultSkeleton note={searchingNote} />}
 
           {status === "error" && error && <ErrorState message={error.message} code={error.code} onRetry={() => runSearch(lastQueryRef.current || query)} />}
 

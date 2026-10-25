@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   AdditiveBlending,
   AmbientLight,
@@ -19,37 +19,38 @@ import {
   ShaderMaterial,
   SphereGeometry,
   SRGBColorSpace,
-  TextureLoader,
-  Vector3,
   WebGLRenderer,
 } from "three";
-import { EARTH_TEXTURE } from "./earth-texture";
 import { paintFlagTexture } from "./flag-texture";
-import { LAUNCH_MS } from "./launch";
 
 const EARTH_TILT = 0.41; // Earth's axial tilt, radians
-const SPIN_PER_SECOND = 0.05; // gentle rotation
-const EARTH_OFFSET_Y = -0.62; // sit the globe low in the frame, under the search box
-const START_FOV = 35;
-const END_FOV = 52; // widening field of view during the zoom adds a sense of speed
-
-// Perspective already makes the approach accelerate on screen, so ease the camera *out*: the globe
-// visibly swells from the first frame and fills the view before the overlay dissolves.
-const easeOutQuad = (t: number) => 1 - (1 - t) * (1 - t);
+const IDLE_SPIN = 0.08; // radians per second
+const SEARCH_SPIN = 2.4; // while a search runs
+const SPIN_EASE = 2.5; // how quickly the spin speed follows (per second)
+const FOV = 35;
+const ATMOSPHERE_SCALE = 1.16;
 
 /**
- * Rotating, lit 3D Earth in a starfield. When `launching` turns true, the camera rushes toward
- * the globe over LAUNCH_MS until its surface fills the frame. Calls `onUnsupported` if WebGL is
- * unavailable so the caller can show a flat fallback.
+ * Rotating, lit cartoon Earth (every country painted with its flag) in a starfield. The canvas
+ * fills its parent; the globe is framed to sit wholly inside `slotRef`'s box, glow included.
+ * While `spinning`, the globe winds up to a fast spin. Calls `onUnsupported` without WebGL.
  */
-export function EarthScene({ launching, onUnsupported }: { launching: boolean; onUnsupported: () => void }) {
+export function EarthScene({
+  spinning,
+  slotRef,
+  onUnsupported,
+}: {
+  spinning: boolean;
+  slotRef: RefObject<HTMLElement | null>;
+  onUnsupported: () => void;
+}) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const launchRef = useRef<number | null>(null);
+  const spinningRef = useRef(spinning);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (launching && launchRef.current === null) launchRef.current = performance.now();
-  }, [launching]);
+    spinningRef.current = spinning;
+  }, [spinning]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -68,40 +69,36 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
     mount.appendChild(renderer.domElement);
 
     const scene = new Scene();
-    const camera = new PerspectiveCamera(START_FOV, 1, 0.01, 400);
+    const camera = new PerspectiveCamera(FOV, 1, 0.01, 400);
 
-    // Earth, tilted on its axis.
-    const earthCenter = new Vector3(0, EARTH_OFFSET_Y, 0);
+    // Earth, tilted on its axis, at the origin.
     const tiltGroup = new Group();
-    tiltGroup.position.copy(earthCenter);
     tiltGroup.rotation.z = EARTH_TILT;
     scene.add(tiltGroup);
 
-    // Paint every country's flag over the Blue Marble, then reveal the globe (plain Earth if that fails).
-    let disposed = false;
-    let flagTexture: CanvasTexture | null = null;
-    const texture = new TextureLoader().load(EARTH_TEXTURE, () => {
-      paintFlagTexture(texture.image as HTMLImageElement, Math.min(4096, renderer.capabilities.maxTextureSize))
-        .then((canvas) => {
-          if (disposed) return;
-          flagTexture = new CanvasTexture(canvas);
-          flagTexture.colorSpace = SRGBColorSpace;
-          flagTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-          earthMaterial.map = flagTexture;
-          earthMaterial.needsUpdate = true;
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (!disposed) setReady(true);
-        });
-    });
-    texture.colorSpace = SRGBColorSpace;
-    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const earthGeometry = new SphereGeometry(1, 128, 128);
-    const earthMaterial = new MeshStandardMaterial({ map: texture, roughness: 0.92, metalness: 0 });
+    const earthMaterial = new MeshStandardMaterial({ color: 0x8fd6f5, roughness: 0.85, metalness: 0 });
     const earth = new Mesh(earthGeometry, earthMaterial);
     earth.rotation.y = -1.9; // open on the Atlantic, Europe and Africa
     tiltGroup.add(earth);
+
+    // Paint every country's flag, then reveal the globe (a plain blue ball if painting fails).
+    let disposed = false;
+    let flagTexture: CanvasTexture | null = null;
+    paintFlagTexture(Math.min(4096, renderer.capabilities.maxTextureSize))
+      .then((canvas) => {
+        if (disposed) return;
+        flagTexture = new CanvasTexture(canvas);
+        flagTexture.colorSpace = SRGBColorSpace;
+        flagTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        earthMaterial.map = flagTexture;
+        earthMaterial.color.set(0xffffff);
+        earthMaterial.needsUpdate = true;
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!disposed) setReady(true);
+      });
 
     // Atmosphere: a back-facing shell with a Fresnel glow.
     const atmosphereGeometry = new SphereGeometry(1, 64, 64);
@@ -117,7 +114,7 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
         varying vec3 vNormal;
         void main() {
           float intensity = pow(0.68 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.2);
-          gl_FragColor = vec4(0.45, 0.72, 1.0, 1.0) * intensity;
+          gl_FragColor = vec4(0.55, 0.85, 1.0, 1.0) * intensity;
         }`,
       side: BackSide,
       blending: AdditiveBlending,
@@ -125,15 +122,14 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
       depthWrite: false,
     });
     const atmosphere = new Mesh(atmosphereGeometry, atmosphereMaterial);
-    atmosphere.position.copy(earthCenter);
-    atmosphere.scale.setScalar(1.16);
+    atmosphere.scale.setScalar(ATMOSPHERE_SCALE);
     scene.add(atmosphere);
 
-    // Sunlight from the upper left gives a day/night terminator.
-    const sun = new DirectionalLight(0xffffff, 2.6);
+    // Soft, mostly flat lighting suits the cartoon globe: a gentle terminator, never a dark side.
+    const sun = new DirectionalLight(0xffffff, 1.8);
     sun.position.set(-5, 2.5, 4);
     scene.add(sun);
-    scene.add(new AmbientLight(0xc8d2e6, 2.6)); // enough fill that flags on the night side still read
+    scene.add(new AmbientLight(0xdde6f5, 3.2));
 
     // Stars scattered on a distant shell.
     const starPositions: number[] = [];
@@ -150,8 +146,8 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
     const stars = new Points(starGeometry, starMaterial);
     scene.add(stars);
 
-    // Frame the globe: about 58% of the height, never wider than ~78% of the width.
-    const restPosition = new Vector3();
+    // Frame the globe inside the slot: pick the camera distance that gives the right on-screen
+    // radius, then shift the view so the globe's centre lands on the slot's centre.
     const frame = () => {
       const { clientWidth: w, clientHeight: h } = mount;
       if (!w || !h) return;
@@ -159,44 +155,36 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
       renderer.domElement.style.width = `${w}px`;
       renderer.domElement.style.height = `${h}px`;
       camera.aspect = w / h;
-      const halfTan = Math.tan(((START_FOV / 2) * Math.PI) / 180);
-      const byHeight = 2 / (0.58 * 2 * halfTan);
-      const byWidth = 2 / (0.78 * 2 * halfTan * camera.aspect);
-      restPosition.set(0, 0, Math.max(byHeight, byWidth));
-      if (launchRef.current === null) {
-        camera.position.copy(restPosition);
-        camera.fov = START_FOV;
-      }
+
+      const mountBox = mount.getBoundingClientRect();
+      const slotBox = slotRef.current?.getBoundingClientRect();
+      const cx = slotBox ? slotBox.left + slotBox.width / 2 - mountBox.left : w / 2;
+      const cy = slotBox ? slotBox.top + slotBox.height / 2 - mountBox.top : h / 2;
+      const slotSize = slotBox ? Math.min(slotBox.width, slotBox.height) : Math.min(w, h) * 0.7;
+      const radiusPx = Math.max(40, slotSize / 2 / (ATMOSPHERE_SCALE + 0.06));
+
+      // A unit sphere at distance d spans 1/√(d²−1) in tangent space; solve for d.
+      const k = h / 2 / (radiusPx * Math.tan(((FOV / 2) * Math.PI) / 180));
+      camera.position.set(0, 0, Math.sqrt(k * k + 1));
+      camera.lookAt(0, 0, 0);
+      camera.setViewOffset(w, h, w / 2 - cx, h / 2 - cy, w, h);
       camera.updateProjectionMatrix();
     };
     frame();
     const resizeObserver = new ResizeObserver(frame);
     resizeObserver.observe(mount);
+    if (slotRef.current) resizeObserver.observe(slotRef.current);
 
-    // Zoom target: just above the surface, facing the globe, so it fills the screen.
-    const launchTarget = earthCenter.clone().add(new Vector3(0, 0, 1.06));
-    const lookTarget = new Vector3();
     let raf = 0;
     let last = performance.now();
+    let speed = IDLE_SPIN;
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
-      earth.rotation.y += SPIN_PER_SECOND * dt;
-      stars.rotation.y += SPIN_PER_SECOND * 0.08 * dt;
-
-      if (launchRef.current !== null) {
-        const t = Math.min((now - launchRef.current) / LAUNCH_MS, 1);
-        const e = easeOutQuad(t);
-        camera.position.lerpVectors(restPosition, launchTarget, e);
-        camera.fov = START_FOV + (END_FOV - START_FOV) * e;
-        // Look from the frame's centre toward the globe's centre as we approach.
-        lookTarget.set(0, 0, 0).lerp(earthCenter, e);
-        camera.lookAt(lookTarget);
-        camera.updateProjectionMatrix();
-        earth.rotation.y += SPIN_PER_SECOND * 6 * dt; // spin up slightly while rushing in
-      } else {
-        camera.lookAt(0, 0, 0);
-      }
+      const target = spinningRef.current ? SEARCH_SPIN : IDLE_SPIN;
+      speed += (target - speed) * Math.min(1, dt * SPIN_EASE);
+      earth.rotation.y += speed * dt;
+      stars.rotation.y += IDLE_SPIN * 0.08 * dt;
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);
     };
@@ -208,7 +196,6 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
       resizeObserver.disconnect();
       earthGeometry.dispose();
       earthMaterial.dispose();
-      texture.dispose();
       flagTexture?.dispose();
       atmosphereGeometry.dispose();
       atmosphereMaterial.dispose();
@@ -217,7 +204,7 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [onUnsupported]);
+  }, [onUnsupported, slotRef]);
 
   return (
     <div
