@@ -24,6 +24,14 @@ If the text is too short, mixed, or you are unsure, return "unknown".`;
 
 const MAX_CHARS = 400;
 
+/**
+ * The local detector has no Afrikaans or Swahili model and guesses erratically for them (Dutch,
+ * Indonesian, Vietnamese…). For papers with those tags, only a detection of a language it identifies
+ * reliably counts as disagreement, which still catches the common case: English text mis-tagged.
+ */
+const UNMODELLED_TAGS = new Set(["af", "sw"]);
+const RELIABLE_DETECTIONS = new Set(["en", "fr", "de", "zh", "ja", "ko", "ru", "ar", "hi"]);
+
 /** Enough text to judge reliably. CJK scripts carry far more per character, so need fewer. */
 function longEnough(text: string): boolean {
   return text.length >= (cjkRatio(text) > 0.5 ? 10 : 25);
@@ -47,6 +55,7 @@ export function needsLanguageCheck(p: Paper): boolean {
   if (!text) return false;
   const local = detectTextLanguage(text);
   if (!local || local === p.language) return false;
+  if (p.language && UNMODELLED_TAGS.has(p.language) && !RELIABLE_DETECTIONS.has(local)) return false;
   if (p.language && p.abstract && p.title && longEnough(p.title) && detectTextLanguage(p.title) === p.language) return false;
   return true;
 }

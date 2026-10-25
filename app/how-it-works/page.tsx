@@ -40,9 +40,10 @@ export default function HowItWorks() {
       <div className="mt-8">
         <Step n={1} title="Expand the question across languages">
           <p>
-            A language model (Gemini, when configured) turns your question into short keyword queries in 15 languages (English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian and Arabic),
-            using the terminology papers in each language tend to use. These are the largest abstract-bearing literatures in OpenAlex
-            that the embedding model supports. Your original question is always kept and searched too.
+            A language model (Gemini, when configured) turns your question into short keyword queries in 18 languages (English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian, Arabic, Hindi, Afrikaans and Swahili),
+            using the terminology papers in each language tend to use. The first fifteen are the largest abstract-bearing literatures in
+            OpenAlex; Hindi, Afrikaans and Swahili are the largest from South Asia and Africa, smaller (about 2,800 to 15,000 works with
+            abstracts each) but real. Your original question is always kept and searched too.
           </p>
           <p>
             Translations are machine-generated, and technical meaning can shift between languages. Every query variant is shown in the
@@ -187,6 +188,11 @@ export default function HowItWorks() {
           <li>
             Large candidate pools are shortlisted using titles before full scoring. A paper with an uninformative title but a
             highly relevant abstract can occasionally miss the shortlist.
+          </li>
+          <li>
+            The embedding model was not trained on Afrikaans or Swahili, so their semantic scores are weaker and those papers rely
+            more on keyword matches. OpenAlex stores Hindi without its vowel signs; Prism matches keywords in that form, but it makes
+            Hindi titles harder to read and to embed.
           </li>
           <li>Scores are relative within a result set and say nothing about a paper’s scientific quality.</li>
         </ul>

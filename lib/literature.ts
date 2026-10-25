@@ -19,4 +19,7 @@ export const OPENALEX_WORKS_BY_LANGUAGE: Record<string, number> = {
   it: 619_603,
   pl: 470_956,
   ar: 468_060,
+  af: 15_193,
+  hi: 12_495,
+  sw: 2_792,
 };

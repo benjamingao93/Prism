@@ -14,6 +14,10 @@ const STOPWORDS = new Set(
     "o a os as um uma e ou de do da dos das em no na nos nas com sem por para como é são foi ser ao que qual quais sobre entre efeito efeitos estudo",
     // French / German / Italian / Indonesian articles and particles
     "le les des du une et ou dans sur pour par avec sans est sont au aux der die das den dem des ein eine einer und oder mit für von zu im ist sind il lo gli della delle degli nel nella per con dan yang di ke dari untuk dengan pada dalam terhadap pengaruh",
+    // Afrikaans / Swahili function words
+    "van en op vir met te na het nie oor ook na ya wa kwa za la katika ni cha juu ili",
+    // Hindi, as OpenAlex stores it (vowel signs removed, see stripDevanagariMarks); one-letter words drop anyway
+    "और पर एक यह इस वह",
     // Chinese / Japanese function words that ICU emits as words
     "的 了 和 与 及 对 在 是 中 等 如何 怎样 什么 哪些 影响 研究 の は が を に で と も へ や から まで について における による する した される こと ため 影響 研究",
   ]
@@ -22,6 +26,15 @@ const STOPWORDS = new Set(
 );
 
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+
+/**
+ * OpenAlex stores Hindi text with its Devanagari vowel signs and viramas removed (जलवायु → जलवय), and
+ * its search index matches that form. Fold queries and metadata the same way so terms meet.
+ */
+const DEVANAGARI_MARKS = /[\u0900-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963]/g;
+export function stripDevanagariMarks(text: string): string {
+  return text.replace(DEVANAGARI_MARKS, "");
+}
 
 /** Very light, language-neutral plural folding for alphabetic scripts. */
 function fold(token: string): string {
@@ -33,7 +46,7 @@ function fold(token: string): string {
 
 export function tokenize(text: string | null | undefined, opts: { keepStopwords?: boolean } = {}): string[] {
   if (!text) return [];
-  const normalized = text.normalize("NFKC").toLowerCase();
+  const normalized = stripDevanagariMarks(text.normalize("NFKC").toLowerCase());
   const tokens: string[] = [];
   for (const seg of segmenter.segment(normalized)) {
     if (!seg.isWordLike) continue;

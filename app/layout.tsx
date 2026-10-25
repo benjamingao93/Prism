@@ -19,7 +19,7 @@ const serif = Source_Serif_4({
 export const metadata: Metadata = {
   title: "Prism — One question. Every language.",
   description:
-    "Prism finds relevant scientific papers across 15 languages with multilingual search and semantic relevance ranking.",
+    "Prism finds relevant scientific papers across 18 languages with multilingual search and semantic relevance ranking.",
   applicationName: "Prism",
 };
 

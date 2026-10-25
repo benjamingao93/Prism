@@ -27,7 +27,7 @@ export function ResultSkeleton({ note }: { note?: string | null }) {
 
 export function InitialState() {
   const steps = [
-    ["Expand", "Your question is turned into keyword queries in 15 languages, from Chinese and Spanish to Korean and Arabic."],
+    ["Expand", "Your question is turned into keyword queries in 18 languages, from Chinese and Spanish to Hindi and Swahili."],
     ["Retrieve", "Each query searches OpenAlex for candidates in its own publication language."],
     ["Rank", "All candidates are ranked together and the 100 most relevant are shown, whatever their language."],
   ];

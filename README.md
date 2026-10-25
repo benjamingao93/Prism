@@ -19,7 +19,7 @@ Science is published in many languages, but most literature discovery happens th
 
 ## What it does
 
-- **Ask in any of 15 languages:** English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian and Arabic.
+- **Ask in any of 18 languages:** English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian, Arabic, Hindi, Afrikaans and Swahili. Hindi, Afrikaans and Swahili are the largest research literatures in OpenAlex from South Asia and Africa.
 - **Search all of them at once.** Gemini turns your question into keyword queries in every language, and each query searches [OpenAlex](https://openalex.org) for papers published in that language.
 - **Rank across languages.** Results are scored with multilingual embeddings and language-aware BM25 keyword matching, and the 100 most relevant are shown, whatever their language. **Load more** searches one page deeper in every language and re-ranks everything together, up to 1,000 results.
 - **Show its work.** Each result explains why it matched: semantic similarity, matched terms, and which language's query found it. A coverage panel shows the language mix and every query that ran.
@@ -48,7 +48,7 @@ Every variable is optional, and the app tells you when a feature is off.
 | Feature | Without configuration | Enable with |
 | --- | --- | --- |
 | Paper search (OpenAlex) | Works, but all keyless users on your network share about 100 searches a day | `OPENALEX_API_KEY`: free, ~1,000 a day ([get one](https://openalex.org/settings/api)) |
-| Searching in 15 languages | **Off.** Only your original question is searched | `GEMINI_API_KEY` ([get one](https://aistudio.google.com/apikey)) |
+| Searching in 18 languages | **Off.** Only your original question is searched | `GEMINI_API_KEY` ([get one](https://aistudio.google.com/apikey)) |
 | Translated titles, abstracts and summaries | **Off.** The controls explain why | `GEMINI_API_KEY` |
 | Multilingual semantic ranking | Works (local model, no key) | On by default; `EMBEDDINGS_ENABLED=false` turns it off |
 | Crossref as a supplementary source | Off | `CROSSREF_ENABLED=true` |
@@ -133,6 +133,7 @@ docs/           logo and screenshot used in this README
 - **Translation drift:** machine-translated queries can shift technical meaning. Every query is shown in the coverage panel.
 - **Speed:** a fresh search scores up to ~1,500 candidates on the CPU and takes about 5–20 seconds. Repeats are cached.
 - **Not fully language-neutral:** ranking is multilingual but not perfectly language-neutral. Note the lower Japanese similarity above.
+- **Hindi, Afrikaans and Swahili:** the embedding model wasn't trained on Afrikaans or Swahili, so those papers rely more on keyword matching. OpenAlex stores Hindi text without its vowel signs (जलवायु appears as जलवय); Prism matches keywords in that form, but titles are harder to read and to embed.
 - **Storage:** caches are in memory and reset on restart. The reading list lives in your browser's `localStorage`.
 
 ## Data and credits

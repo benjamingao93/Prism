@@ -6,7 +6,7 @@ import { z } from "zod";
  * Each one adds an OpenAlex request per search.
  */
 export const QUERY_LANGUAGES = [
-  "en", "zh", "es", "pt", "fr", "de", "ja", "ru", "ko", "id", "it", "tr", "pl", "uk", "ar",
+  "en", "zh", "es", "pt", "fr", "de", "ja", "ru", "ko", "id", "it", "tr", "pl", "uk", "ar", "hi", "af", "sw",
 ] as const;
 export type QueryLanguage = (typeof QUERY_LANGUAGES)[number];
 

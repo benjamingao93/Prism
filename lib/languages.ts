@@ -30,6 +30,8 @@ const LABELS: Record<string, LanguageLabel> = {
   vi: { english: "Vietnamese", native: "Tiếng Việt" },
   th: { english: "Thai", native: "ไทย" },
   hi: { english: "Hindi", native: "हिन्दी" },
+  af: { english: "Afrikaans", native: "Afrikaans" },
+  sw: { english: "Swahili", native: "Kiswahili" },
 };
 
 export const QUERY_LANGUAGE_OPTIONS: { code: QueryLanguage; label: string; native: string }[] = QUERY_LANGUAGES.map(

@@ -48,6 +48,13 @@ describe("tokenize", () => {
     expect(tokenize("Effects of Microplastics on the marine ecosystems")).toEqual(["microplastic", "marine", "ecosystem"]);
   });
 
+  it("folds Hindi to OpenAlex's stored form, without vowel signs, so query and title terms meet", () => {
+    // OpenAlex stores "भारत पर जलवायु परिवर्तन का प्रभाव" as below.
+    const stored = tokenize("भरत पर जलवय परवरतन क परभव");
+    expect(stored).toEqual(["भरत", "जलवय", "परवरतन", "परभव"]);
+    expect(tokenize("जलवायु परिवर्तन")).toEqual(["जलवय", "परवरतन"]);
+  });
+
   it("extracts keywords from a natural-language question", () => {
     expect(extractKeywords("How does drought stress affect rice crop yields?")).toBe("drought stress rice crop yields");
   });

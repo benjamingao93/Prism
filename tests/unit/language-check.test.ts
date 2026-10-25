@@ -35,6 +35,14 @@ describe("needsLanguageCheck", () => {
     expect(needsLanguageCheck(paper(5, { language: "zh", languageTag: "zh", abstract: null, title: "Short" }))).toBe(false);
   });
 
+  it("does not flag Afrikaans or Swahili papers the local detector can't identify, but does flag English ones", () => {
+    const afrikaans = "Fisieke aktiwiteit, gesondheid en welstand: is 'n paradigmaskuif nodig vir skole in Suid-Afrika?";
+    const swahili = "Utafiti huu unachunguza athari za mabadiliko ya tabianchi kwa kilimo cha mahindi nchini Tanzania.";
+    expect(needsLanguageCheck(paper(12, { language: "af", languageTag: "af", title: null, abstract: afrikaans }))).toBe(false);
+    expect(needsLanguageCheck(paper(13, { language: "sw", languageTag: "sw", title: null, abstract: swahili }))).toBe(false);
+    expect(needsLanguageCheck(paper(14, { language: "sw", languageTag: "sw", title: null, abstract: englishAbstract }))).toBe(true);
+  });
+
   it("accepts shorter text in CJK scripts, which carry more per character", () => {
     expect(languageCheckText(paper(8, { abstract: "水稻抗旱品种的产量研究" }))).toBe("水稻抗旱品种的产量研究");
   });

@@ -53,8 +53,8 @@ export function searchDeps(): SearchDeps {
                   models: modelChain(e.LLM_MODEL_FAST),
                   system,
                   prompt,
-                  // Thinking tokens count toward the output budget; 15 languages need headroom.
-                  maxTokens: 8000,
+                  // Thinking tokens count toward the output budget; 18 languages need headroom.
+                  maxTokens: 10000,
                   thinking: "low",
                   timeoutMs: 20_000,
                 })
