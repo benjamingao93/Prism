@@ -17,6 +17,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ClientApiError, api } from "@/lib/client-api";
+import { countryName } from "@/lib/countries";
 import { languageName } from "@/lib/languages";
 import { relevanceLabel, scoreFor } from "@/lib/ranking";
 import type { ExplanationKind, PaperSummary, QueryLanguage, QueryVariant, RankedPaper, RankingMode } from "@/lib/types";
@@ -413,6 +414,7 @@ export function PaperCard({
               </span>
             )}
             {paper.type && <span>Type: {paper.type}</span>}
+            {paper.country && <span>Published in: {countryName(paper.country)} (venue country)</span>}
             {paper.citedByCount != null && <span className="tabular">Cited by {paper.citedByCount} (not used in ranking)</span>}
             <span>Text scored: {paper.textUsed === "title+abstract" ? "title + abstract" : paper.textUsed === "title" ? "title only" : "none"}</span>
             {paper.openalexId && safeExternalUrl(paper.openalexId) && (

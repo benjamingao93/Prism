@@ -46,6 +46,8 @@ export function normalizeCrossrefItem(item: CrossrefItem): Paper | null {
     language: lang && /^[a-z]{2}$/.test(lang) ? lang : null,
     languageTag: lang && /^[a-z]{2}$/.test(lang) ? lang : null,
     languageSource: "metadata",
+    sourceId: null,
+    country: null,
     landingUrl: safeExternalUrl(item.URL) ?? doiUrl(doi),
     oaUrl: null,
     isOpenAccess: null,

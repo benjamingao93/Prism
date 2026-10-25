@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, CircleSlash, RefreshCw } from "lucide-react";
+import Link from "next/link";
 import type { Coverage } from "@/lib/comparison";
 import { languageLabel, languageName } from "@/lib/languages";
 import type { QueryVariant } from "@/lib/types";
@@ -27,9 +28,14 @@ export function SearchCoverage({ coverage, candidateCount, variants, refine, onT
   const max = Math.max(1, ...coverage.languages.map((l) => l.count));
   return (
     <section aria-labelledby="coverage-title" className="rounded-lg border bg-surface p-4">
-      <h2 id="coverage-title" className="font-serif text-base font-semibold">
-        Search coverage
-      </h2>
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 id="coverage-title" className="font-serif text-base font-semibold">
+          Search coverage
+        </h2>
+        <Link href="/map" className="text-xs text-accent-blue hover:underline">
+          View on map
+        </Link>
+      </div>
       <p className="mb-3 text-xs text-muted-foreground">Computed from the top results shown, ranked from all candidates.</p>
 
       <div className="grid grid-cols-2 gap-2">

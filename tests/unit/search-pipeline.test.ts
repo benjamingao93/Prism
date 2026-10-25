@@ -32,6 +32,7 @@ function deps(search: (params: OpenAlexSearchParams) => Promise<SearchResult>, o
     searchOpenAlex: vi.fn(search),
     countByLanguage: null,
     checkLanguages: null,
+    sourceCountries: null,
     searchCrossref: null,
     semantic: async (_q, papers) => ({ scores: new Map(papers.map((x, i) => [x.id, 0.5 + i * 0.01])), notice: null }),
     capabilities: () => caps,

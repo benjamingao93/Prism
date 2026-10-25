@@ -72,6 +72,7 @@ describe("language check in the search pipeline", () => {
       searchOpenAlex: async () => ({ papers: [tagged, correct], total: 2 }),
       countByLanguage: null,
       checkLanguages,
+      sourceCountries: null,
       searchCrossref: null,
       semantic: async (_q, papers) => ({ scores: new Map(papers.map((x) => [x.id, 0.5])), notice: null }),
       capabilities: () => ({ llm: true, embeddings: "ready", embeddingModel: "m", openalexKey: true, crossref: false }),

@@ -75,6 +75,14 @@ export interface Paper {
   languageTag: string | null;
   /** "metadata": `language` is the source tag. "detected": Gemini found the text is in another language. */
   languageSource: "metadata" | "detected";
+  /** OpenAlex ID of the venue (journal, repository, …) it was published in, e.g. "S4210172589". */
+  sourceId: string | null;
+  /**
+   * ISO 3166-1 alpha-2 country of the publication venue, as recorded by OpenAlex (for journals
+   * of large international publishers this is often the publisher's registered country). Null if
+   * unknown. Never derived from authors or language.
+   */
+  country: string | null;
   landingUrl: string | null;
   oaUrl: string | null;
   isOpenAccess: boolean | null;

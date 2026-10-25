@@ -18,6 +18,8 @@ export type SearchCrossrefFn = (params: CrossrefSearchParams) => Promise<SearchR
 export interface SearchDeps {
   expand: (query: string, source: QueryLanguage, targets: QueryLanguage[]) => Promise<ExpansionResult>;
   searchOpenAlex: SearchOpenAlexFn;
+  /** Country of each publication venue (OpenAlex source); null to skip. */
+  sourceCountries: ((sourceIds: string[]) => Promise<Map<string, string | null>>) | null;
   /** Detects the language of flagged papers' text (one LLM call); null to keep source tags. */
   checkLanguages: LanguageCheckFn | null;
   /** Works per language matching an OR of topic terms (one request); null to skip. */
@@ -303,6 +305,20 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
   const ranked = scorePapers({ papers: pool, variants, semantic: semantic.scores, bm25 });
   const modes = availableModes(ranked, semantic.scores != null);
   const effectiveMode = resolveMode(req.mode, modes);
+  let selected = selectTopResults(ranked, modes, effectiveMode, req.limit, { variantId: variants[0].id, k: COMPARISON_K });
+
+  // 6. Where each returned paper was published (venue country), for the map.
+  if (deps.sourceCountries) {
+    const ids = selected.map((p) => p.sourceId).filter((id): id is string => Boolean(id));
+    if (ids.length) {
+      try {
+        const countries = await deps.sourceCountries(ids);
+        selected = selected.map((p) => (p.sourceId ? { ...p, country: countries.get(p.sourceId) ?? null } : p));
+      } catch {
+        notices.push("Publication countries could not be loaded for this search, so the map has no data for it.");
+      }
+    }
+  }
 
   return {
     query: req.query,
@@ -315,10 +331,7 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
     candidateCount: merged.length,
     retrievedCount,
     literatureEstimate,
-    papers: selectTopResults(ranked, modes, effectiveMode, req.limit, {
-      variantId: variants[0].id,
-      k: COMPARISON_K,
-    }),
+    papers: selected,
     capabilities: deps.capabilities(),
     notices,
     weights: { ...HYBRID_WEIGHTS },

@@ -4,7 +4,7 @@ import { searchCrossref, type CrossrefSearchParams } from "./crossref";
 import { embeddingModelName, embeddingStatus, semanticScores } from "./embeddings";
 import { env, modelChain } from "./env";
 import { llmConfigured, structuredCall } from "./llm";
-import { countWorksByLanguage, searchOpenAlex, type OpenAlexSearchParams, type SearchResult } from "./openalex";
+import { countWorksByLanguage, fetchSourceCountries, searchOpenAlex, type OpenAlexSearchParams, type SearchResult } from "./openalex";
 import { expandQuery, ExpansionSchema } from "./query-expansion";
 import type { SearchDeps } from "./search";
 import { TranslationSchema, translateItems } from "./translation";
@@ -16,6 +16,8 @@ const DAY = 24 * 60 * 60 * 1000;
 const sourceCache = globalCache<SearchResult>("source-responses", 1000, DAY);
 const countCache = globalCache<Record<string, number>>("language-counts", 1000, DAY);
 const languageCache = globalCache<string>("language-checks", 20_000, 7 * DAY);
+// Venue countries rarely change; "" records a known absence.
+const sourceCountryCache = globalCache<string>("source-countries", 50_000, 30 * DAY);
 
 function cached(prefix: string, params: object, run: () => Promise<SearchResult>): Promise<SearchResult> {
   const key = `${prefix}:${JSON.stringify(params)}`;
@@ -63,6 +65,23 @@ export function searchDeps(): SearchDeps {
       cached("openalex", params, () =>
         searchOpenAlex(params, { apiKey: e.OPENALEX_API_KEY, mailto: e.OPENALEX_MAILTO }),
       ),
+    sourceCountries: async (ids) => {
+      const out = new Map<string, string | null>();
+      const missing: string[] = [];
+      for (const id of new Set(ids)) {
+        const hit = sourceCountryCache.get(id);
+        if (hit === undefined) missing.push(id);
+        else out.set(id, hit || null);
+      }
+      if (missing.length) {
+        const fetched = await fetchSourceCountries(missing, { apiKey: e.OPENALEX_API_KEY, mailto: e.OPENALEX_MAILTO });
+        for (const [id, cc] of fetched) {
+          out.set(id, cc);
+          sourceCountryCache.set(id, cc ?? "");
+        }
+      }
+      return out;
+    },
     checkLanguages: llmConfigured()
       ? async (items) => {
           const result = new Map<string, string>();

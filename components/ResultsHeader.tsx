@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { countryName } from "@/lib/countries";
 import { languageLabel, languageName } from "@/lib/languages";
 import type { RankingMode, SearchResponse } from "@/lib/types";
 import { MODE_LABELS, RankingModeToggle } from "./RankingInfo";
@@ -12,6 +13,8 @@ interface Props {
   shownCount: number;
   topCount: number;
   refine: string[];
+  country: string | null;
+  onClearCountry: () => void;
   minScore: number;
   onClearRefine: () => void;
 }
@@ -20,7 +23,18 @@ function Chip({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex items-center gap-1 rounded-md border bg-surface px-2 py-0.5 text-xs text-secondary-foreground">{children}</span>;
 }
 
-export function ResultsHeader({ response, mode, onModeChange, shownCount, topCount, refine, minScore, onClearRefine }: Props) {
+export function ResultsHeader({
+  response,
+  mode,
+  onModeChange,
+  shownCount,
+  topCount,
+  refine,
+  country,
+  onClearCountry,
+  minScore,
+  onClearRefine,
+}: Props) {
   const f = response.filters;
   const sources = [...new Set(response.variants.filter((v) => !v.error && !v.skipped).map((v) => v.source))];
   const translatedCount = response.variants.filter((v) => v.kind === "translated" && !v.skipped && !v.error).length;
@@ -65,6 +79,15 @@ export function ResultsHeader({ response, mode, onModeChange, shownCount, topCou
         <Chip>Top {f.limit} overall</Chip>
 
         {minScore > 0 && <Chip>Min score {minScore.toFixed(2)}</Chip>}
+        {country && (
+          <button
+            type="button"
+            onClick={onClearCountry}
+            className="inline-flex items-center gap-1 rounded-md border border-accent-blue/30 bg-accent-blue-soft px-2 py-0.5 text-xs text-accent-blue"
+          >
+            Published in: {countryName(country)} <X className="size-3" aria-label="Clear" />
+          </button>
+        )}
         {refine.length > 0 && (
           <button
             type="button"

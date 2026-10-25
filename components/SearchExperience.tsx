@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, RefreshCw } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ClientApiError, api } from "@/lib/client-api";
@@ -25,7 +26,7 @@ const TRANSLATE_BATCH = 15;
 type Status = "idle" | "loading" | "success" | "error";
 
 export function SearchExperience() {
-  const { queryLanguage } = useAppState();
+  const { queryLanguage, hydrated, lastSearch, setLastSearch } = useAppState();
   const [query, setQuery] = useState("");
   const [settings, setSettings] = useState<SearchSettingsValue>(DEFAULT_SETTINGS);
   const [status, setStatus] = useState<Status>("idle");
@@ -33,6 +34,8 @@ export function SearchExperience() {
   const [error, setError] = useState<ClientApiError | null>(null);
   const [caps, setCaps] = useState<Capabilities | null>(null);
   const [refine, setRefine] = useState<string[]>([]);
+  /** Publication-venue country filter (ISO alpha-2), set from the map tab. */
+  const [country, setCountry] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [translations, setTranslations] = useState<Record<string, PaperTranslation>>({});
   const abortRef = useRef<AbortController | null>(null);
@@ -93,8 +96,10 @@ export function SearchExperience() {
         );
         if (controller.signal.aborted) return;
         setResponse(res);
+        setLastSearch({ response: res, mode: s.mode });
         setCaps(res.capabilities);
         setRefine([]);
+        setCountry(null);
         setVisible(PAGE_SIZE);
         generationRef.current += 1;
         requestedRef.current = new Set();
@@ -106,21 +111,58 @@ export function SearchExperience() {
         setStatus("error");
       }
     },
-    [queryLanguage, settings],
+    [queryLanguage, settings, setLastSearch],
   );
 
-  // Support shareable ?q= links.
-  const bootstrapped = useRef(false);
-  useEffect(() => {
-    if (bootstrapped.current) return;
-    bootstrapped.current = true;
-    const q = new URLSearchParams(window.location.search).get("q");
-    if (q) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- initialize from URL once on mount
+  // React to the URL: shareable ?q= links, and returning from the map with ?country=. Next keeps
+  // this page alive (hidden) while another tab is shown, so this must follow URL changes rather
+  // than run once on mount. A query that matches the last search (shared with the map tab) is
+  // restored instead of searched again.
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q")?.trim() ?? "";
+  const urlCountry = searchParams.get("country");
+  const loadQueryFromUrl = useCallback(
+    (q: string) => {
+      lastQueryRef.current = q;
       setQuery(q);
-      void runSearch(q);
+      if (lastSearch && lastSearch.response.query === q) {
+        generationRef.current += 1;
+        requestedRef.current = new Set();
+        setResponse(lastSearch.response);
+        setCaps(lastSearch.response.capabilities);
+        setSettings((s) => ({ ...s, mode: lastSearch.mode }));
+        setStatus("success");
+      } else {
+        void runSearch(q);
+      }
+    },
+    [lastSearch, runSearch],
+  );
+  useEffect(() => {
+    if (hydrated && urlQuery && urlQuery !== lastQueryRef.current) loadQueryFromUrl(urlQuery);
+  }, [hydrated, urlQuery, loadQueryFromUrl]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the country filter from the URL
+    setCountry(urlCountry && /^[A-Z]{2}$/.test(urlCountry) ? urlCountry : null);
+  }, [urlCountry]);
+
+  // Keep the map tab in sync with the ranking mode, and the URL in sync with the country filter.
+  useEffect(() => {
+    if (response && lastSearch?.response === response && lastSearch.mode !== settings.mode) {
+      setLastSearch({ response, mode: settings.mode });
     }
-  }, [runSearch]);
+  }, [response, settings.mode, lastSearch, setLastSearch]);
+  useEffect(() => {
+    if (!response) return;
+    try {
+      const url = new URL(window.location.href);
+      if (country) url.searchParams.set("country", country);
+      else url.searchParams.delete("country");
+      window.history.replaceState(null, "", url);
+    } catch {
+      // ignore URL errors
+    }
+  }, [country, response]);
 
   const mode: RankingMode = response && !response.availableModes.includes(settings.mode) ? response.effectiveMode : settings.mode;
 
@@ -131,9 +173,11 @@ export function SearchExperience() {
   );
 
   const displayed = useMemo(() => {
-    const refined = filterPapers(topResults, { languages: refine, yearFrom: null, yearTo: null });
+    const refined = filterPapers(topResults, { languages: refine, yearFrom: null, yearTo: null }).filter(
+      (p) => !country || p.country === country,
+    );
     return filterByMinScore(refined, mode, settings.minScore);
-  }, [topResults, mode, refine, settings.minScore]);
+  }, [topResults, mode, refine, country, settings.minScore]);
 
   const shown = displayed.slice(0, visible);
   const variantMap = useMemo(() => new Map((response?.variants ?? []).map((v) => [v.id, v])), [response]);
@@ -302,6 +346,8 @@ export function SearchExperience() {
                 shownCount={displayed.length}
                 topCount={topResults.length}
                 refine={refine}
+                country={country}
+                onClearCountry={() => setCountry(null)}
                 minScore={settings.minScore}
                 onClearRefine={() => setRefine([])}
               />
@@ -322,6 +368,7 @@ export function SearchExperience() {
                   filtered={response.papers.length > 0}
                   onReset={() => {
                     setRefine([]);
+                    setCountry(null);
                     setSettings((s) => ({ ...s, minScore: 0 }));
                   }}
                 />

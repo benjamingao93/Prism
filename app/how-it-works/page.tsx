@@ -124,6 +124,17 @@ export default function HowItWorks() {
         </Step>
       </div>
 
+      <section className="mt-2 border-t py-6">
+        <h2 className="font-serif text-xl font-semibold">The map</h2>
+        <p className="mt-2 text-[15px] leading-relaxed text-secondary-foreground">
+          The Map tab shows where the top results of your latest search were published. Each result’s venue (journal, repository
+          or publisher) is looked up in OpenAlex, 100 venues per request, and countries are shaded by how many results came from
+          venues registered there. The shading uses a square-root scale so countries with a few papers stay visible. This is the
+          venue’s country, not the authors’ location or the paper’s language. Clicking a country returns to your results with a
+          publication-country filter, without searching again.
+        </p>
+      </section>
+
       <section className="mt-4 rounded-lg border bg-surface p-5">
         <h2 className="font-serif text-lg font-semibold">Evidence: cross-language similarity sanity check</h2>
         <p className="mt-1 text-sm text-muted-foreground">

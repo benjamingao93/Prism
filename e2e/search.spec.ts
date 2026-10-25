@@ -10,7 +10,15 @@ const variants: QueryVariant[] = [
   { id: "openalex:zh:1", lang: "zh", kind: "translated", text: "干旱 水稻", searchQuery: "干旱 水稻", concepts: ["干旱", "水稻"], topic: "干旱", source: "openalex", relaxed: false, hitCount: 1, totalAvailable: 1, matchCount: 1, kept: 1, error: null, skipped: null },
 ];
 
-function paper(id: string, title: string, language: string | null, semanticRaw: number, keyword: number, variantId: string): RankedPaper {
+function paper(
+  id: string,
+  title: string,
+  language: string | null,
+  semanticRaw: number,
+  keyword: number,
+  variantId: string,
+  country: string | null = null,
+): RankedPaper {
   const semantic = semanticRaw;
   return {
     id,
@@ -25,6 +33,8 @@ function paper(id: string, title: string, language: string | null, semanticRaw: 
     language,
     languageTag: language,
     languageSource: "metadata",
+    sourceId: null,
+    country,
     landingUrl: `https://example.org/${id}`,
     oaUrl: null,
     isOpenAccess: null,
@@ -51,9 +61,9 @@ const response: SearchResponse = {
   literatureEstimate: "topic",
   // Keyword favors Alpha; semantic favors Gamma (Chinese).
   papers: [
-    paper("A", "TEST Alpha keyword-heavy paper", "en", 0.3, 1, "openalex:en:0"),
-    paper("B", "TEST Beta balanced paper", "en", 0.6, 0.5, "openalex:en:0"),
-    paper("C", "TEST Gamma 干旱胁迫 paper", "zh", 0.9, 0.1, "openalex:zh:1"),
+    paper("A", "TEST Alpha keyword-heavy paper", "en", 0.3, 1, "openalex:en:0", "GB"),
+    paper("B", "TEST Beta balanced paper", "en", 0.6, 0.5, "openalex:en:0", "US"),
+    paper("C", "TEST Gamma 干旱胁迫 paper", "zh", 0.9, 0.1, "openalex:zh:1", "CN"),
   ],
   capabilities: caps,
   notices: [],
@@ -130,4 +140,36 @@ test("shows an empty state when nothing is found", async ({ page }) => {
   await page.getByLabel("Research question").fill("an obscure question");
   await page.getByLabel("Research question").press("Enter");
   await expect(page.getByText("No papers found")).toBeVisible();
+});
+
+test("map shades publication countries and filters results by the clicked country", async ({ page }) => {
+  await mockApi(page, () => ({ status: 200, json: response }));
+  await page.goto("/");
+  await page.getByLabel("Research question").fill("How does drought affect rice?");
+  await page.getByLabel("Research question").press("Enter");
+  await expect(page.getByTestId("paper-card")).toHaveCount(3);
+
+  // Navigate in-app (the search page stays mounted in the background) — the case that must
+  // still pick up ?country= when we come back.
+  await page.getByRole("link", { name: "Map", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "How does drought affect rice?" })).toBeVisible();
+  // One button per country with papers, on the map and in the list.
+  await expect(page.getByRole("button", { name: /^China: 1 papers/ })).toBeVisible();
+  await page.getByRole("button", { name: /^China$|China\s+1/ }).first().click();
+
+  await expect(page).toHaveURL(/country=CN/);
+  await expect(page.getByText("Published in: China")).toBeVisible();
+  await expect(page.getByTestId("paper-card")).toHaveCount(1);
+  await expect(page.getByTestId("paper-card")).toContainText("Gamma");
+
+  // Clearing the filter shows all results again, without another search.
+  await page.getByText("Published in: China").click();
+  await expect(page.getByTestId("paper-card")).toHaveCount(3);
+  await expect(page).not.toHaveURL(/country=/);
+});
+
+test("map explains when there is no search yet", async ({ page }) => {
+  await page.route("**/api/status", (route) => route.fulfill({ json: caps }));
+  await page.goto("/map");
+  await expect(page.getByRole("heading", { name: "No search to map yet" })).toBeVisible();
 });

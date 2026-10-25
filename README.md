@@ -27,6 +27,8 @@ Science is published in many languages, but most literature discovery happens th
 - **Keep originals first.** Titles and abstracts can be machine-translated into your language; translations are always labeled and shown next to the original. Optional AI summaries use only the abstract and say what it doesn't state.
 - **Use real data only.** Every result is a live OpenAlex record. Missing abstracts, DOIs and languages are shown as missing, never filled in.
 
+- **Map where it was published.** The Map tab shades a world map by how many of your latest search's top results were published in each country, using the country of the journal, repository or publisher as recorded by OpenAlex. Click a country to return to your results filtered to papers published there.
+
 Also included: Hybrid / Semantic / Keyword ranking modes, filters for publication language, year and minimum relevance, a comparison against an original-language-only search, and a reading list stored in your browser.
 
 ## Quick start
@@ -108,7 +110,7 @@ npm run check:embeddings  # cross-language similarity check
 Built with Next.js 16, TypeScript, Tailwind CSS, shadcn/ui, Transformers.js and the Google Gen AI SDK.
 
 ```
-app/            pages (/, /how-it-works, /about) and API routes
+app/            pages (/, /map, /how-it-works, /about) and API routes
   api/search      validate → expand → retrieve → allocate → score → JSON
   api/translate   batch title and abstract translation (cached)
   api/summarize   abstract-only structured summary
@@ -127,6 +129,7 @@ docs/           logo and screenshot used in this README
 - **Language corrections:** these judge the title and abstract, not the full text. A paper whose title and abstract are both in another language than its tag is relabeled. Without a Gemini key, OpenAlex's tags are used as they are.
 - **Literature sizes:** these are estimates from OpenAlex counts for a machine-translated subject term.
 - **Missing abstracts:** many records have none, most often Japanese ones. Those are ranked on their titles and labeled.
+- **Publication countries:** the map uses the venue's registered country, so journals of large international publishers count toward a few countries (Elsevier toward the Netherlands or UK, MDPI toward Switzerland). About a quarter of results have no recorded venue country, and very small countries are listed beside the map rather than visible on it.
 - **Translation drift:** machine-translated queries can shift technical meaning. Every query is shown in the coverage panel.
 - **Speed:** a fresh search scores up to ~1,500 candidates on the CPU and takes about 5–20 seconds. Repeats are cached.
 - **Not fully language-neutral:** ranking is multilingual but not perfectly language-neutral. Note the lower Japanese similarity above.

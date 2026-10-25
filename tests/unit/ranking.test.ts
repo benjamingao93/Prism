@@ -18,6 +18,8 @@ function paper(id: string, title: string, abstract: string | null, language = "e
     language,
     languageTag: language,
     languageSource: "metadata",
+    sourceId: null,
+    country: null,
     landingUrl: null,
     oaUrl: null,
     isOpenAccess: null,

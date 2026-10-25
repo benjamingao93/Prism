@@ -41,7 +41,13 @@ export interface OpenAlexWork {
 interface OpenAlexLocation {
   landing_page_url?: string | null;
   pdf_url?: string | null;
-  source?: { display_name?: string | null } | null;
+  source?: { id?: string | null; display_name?: string | null } | null;
+}
+
+function sourceIdOf(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const id = raw.split("/").pop() ?? "";
+  return /^S\d+$/.test(id) ? id : null;
 }
 
 export interface OpenAlexListResponse {
@@ -102,6 +108,8 @@ export function normalizeOpenAlexWork(work: OpenAlexWork): Paper | null {
     language: normalizeLanguage(work.language),
     languageTag: normalizeLanguage(work.language),
     languageSource: "metadata",
+    sourceId: sourceIdOf(primary?.source?.id),
+    country: null,
     landingUrl: safeExternalUrl(primary?.landing_page_url) ?? (doi ? `https://doi.org/${doi}` : null),
     oaUrl,
     isOpenAccess: typeof work.open_access?.is_oa === "boolean" ? work.open_access.is_oa : null,
@@ -202,4 +210,36 @@ export async function countWorksByLanguage(
 export function orQuery(terms: string[]): string {
   const cleaned = [...new Set(terms.map((t) => t.replace(/["“”()]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean))];
   return cleaned.map((t) => `"${t}"`).join(" OR ");
+}
+
+interface SourcesResponse {
+  results?: Array<{ id?: string | null; country_code?: string | null } | null> | null;
+}
+
+/**
+ * Look up the country of publication venues, 100 per request (a cheap list call). Returns a map
+ * from source ID to ISO alpha-2 code, or null where OpenAlex records no country.
+ */
+export async function fetchSourceCountries(
+  ids: string[],
+  config: OpenAlexConfig,
+  fetchOpts: Partial<FetchJsonOptions> = {},
+): Promise<Map<string, string | null>> {
+  const unique = [...new Set(ids.filter((id) => /^S\d+$/.test(id)))];
+  const out = new Map<string, string | null>(unique.map((id) => [id, null]));
+  for (let i = 0; i < unique.length; i += 100) {
+    const url = new URL("https://api.openalex.org/sources");
+    url.searchParams.set("filter", `openalex:${unique.slice(i, i + 100).join("|")}`);
+    url.searchParams.set("per_page", "100");
+    url.searchParams.set("select", "id,country_code");
+    if (config.mailto) url.searchParams.set("mailto", config.mailto);
+    if (config.apiKey) url.searchParams.set("api_key", config.apiKey);
+    const data = await fetchJson<SourcesResponse>(url.toString(), { service: "OpenAlex", timeoutMs: 15_000, retries: 1, ...fetchOpts });
+    for (const s of Array.isArray(data?.results) ? data.results : []) {
+      const id = sourceIdOf(s?.id);
+      const cc = typeof s?.country_code === "string" ? s.country_code.trim().toUpperCase() : "";
+      if (id) out.set(id, /^[A-Z]{2}$/.test(cc) ? cc : null);
+    }
+  }
+  return out;
 }
