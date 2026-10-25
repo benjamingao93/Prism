@@ -6,6 +6,7 @@ import {
   AmbientLight,
   BackSide,
   BufferGeometry,
+  CanvasTexture,
   DirectionalLight,
   Float32BufferAttribute,
   Group,
@@ -23,6 +24,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { EARTH_TEXTURE } from "./earth-texture";
+import { paintFlagTexture } from "./flag-texture";
 import { LAUNCH_MS } from "./launch";
 
 const EARTH_TILT = 0.41; // Earth's axial tilt, radians
@@ -75,7 +77,24 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
     tiltGroup.rotation.z = EARTH_TILT;
     scene.add(tiltGroup);
 
-    const texture = new TextureLoader().load(EARTH_TEXTURE, () => setReady(true));
+    // Paint every country's flag over the Blue Marble, then reveal the globe (plain Earth if that fails).
+    let disposed = false;
+    let flagTexture: CanvasTexture | null = null;
+    const texture = new TextureLoader().load(EARTH_TEXTURE, () => {
+      paintFlagTexture(texture.image as HTMLImageElement, Math.min(4096, renderer.capabilities.maxTextureSize))
+        .then((canvas) => {
+          if (disposed) return;
+          flagTexture = new CanvasTexture(canvas);
+          flagTexture.colorSpace = SRGBColorSpace;
+          flagTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          earthMaterial.map = flagTexture;
+          earthMaterial.needsUpdate = true;
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!disposed) setReady(true);
+        });
+    });
     texture.colorSpace = SRGBColorSpace;
     texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const earthGeometry = new SphereGeometry(1, 128, 128);
@@ -114,7 +133,7 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
     const sun = new DirectionalLight(0xffffff, 2.6);
     sun.position.set(-5, 2.5, 4);
     scene.add(sun);
-    scene.add(new AmbientLight(0x6b7a99, 0.35));
+    scene.add(new AmbientLight(0xc8d2e6, 2.6)); // enough fill that flags on the night side still read
 
     // Stars scattered on a distant shell.
     const starPositions: number[] = [];
@@ -184,11 +203,13 @@ export function EarthScene({ launching, onUnsupported }: { launching: boolean; o
     raf = requestAnimationFrame(tick);
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
       earthGeometry.dispose();
       earthMaterial.dispose();
       texture.dispose();
+      flagTexture?.dispose();
       atmosphereGeometry.dispose();
       atmosphereMaterial.dispose();
       starGeometry.dispose();
