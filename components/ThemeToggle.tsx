@@ -27,8 +27,14 @@ export function ThemeToggle() {
 
   return (
     <Select value={current.value} onValueChange={setTheme}>
-      <SelectTrigger size="sm" aria-label={`Theme: ${current.label}`} className="h-8 w-8 justify-center bg-surface px-0 [&>svg:last-child]:hidden">
+      <SelectTrigger
+        size="sm"
+        aria-label={`Theme: ${current.label}`}
+        title="Theme: light, dark or match your system"
+        className="h-8 min-w-8 justify-center gap-1.5 bg-surface px-2 sm:justify-start [&>svg:last-child]:hidden"
+      >
         <current.Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+        <span className="hidden text-sm sm:inline">{current.label}</span>
       </SelectTrigger>
       <SelectContent align="end">
         {OPTIONS.map(({ value, label, Icon }) => (

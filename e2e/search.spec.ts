@@ -195,3 +195,20 @@ test("Load more searches one page deeper and shows more results", async ({ page 
   expect(bodies.at(-1)).toMatchObject({ query: "How does drought affect rice?", pages: 2, limit: 100 });
   await expect(page.getByText("No more results")).toBeVisible();
 });
+
+test("theme switch turns on dark mode and remembers it", async ({ browser }) => {
+  const context = await browser.newContext({ colorScheme: "light" });
+  const page = await context.newPage();
+  await page.route("**/api/status", (route) => route.fulfill({ json: caps }));
+  await page.goto("/");
+  const isDark = () => page.evaluate(() => document.documentElement.classList.contains("dark"));
+  expect(await isDark()).toBe(false);
+
+  await page.getByLabel(/^Theme:/).click();
+  await page.getByRole("option", { name: "Dark" }).click();
+  expect(await isDark()).toBe(true);
+
+  await page.reload();
+  expect(await isDark()).toBe(true);
+  await context.close();
+});
