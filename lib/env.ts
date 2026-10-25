@@ -24,7 +24,8 @@ const EnvSchema = z.object({
   CROSSREF_MAILTO: optionalString,
   EMBEDDINGS_ENABLED: bool(true),
   EMBEDDING_MODEL: z.string().default("Xenova/paraphrase-multilingual-MiniLM-L12-v2"),
-  EMBEDDING_CACHE_DIR: z.string().default(".cache/models"),
+  // Vercel's filesystem is read-only apart from /tmp, so the model downloads there on first use.
+  EMBEDDING_CACHE_DIR: z.string().default(process.env.VERCEL ? "/tmp/prism-models" : ".cache/models"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
