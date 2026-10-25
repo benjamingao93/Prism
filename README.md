@@ -1,8 +1,8 @@
-# Babel Scholar
+# prism
 
-**Find the scientific research your language might otherwise cause you to miss.**
+**One question. Every language.**
 
-Babel Scholar is a multilingual research search engine. You ask a question in any of 15 languages (English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian and Arabic). It expands the question into keyword queries in all of them, retrieves candidates from [OpenAlex](https://openalex.org) in each language, ranks the whole pool together with multilingual embeddings plus language-aware BM25, and shows the 100 most relevant papers. There is no per-language quota. Each result explains why it matched.
+Prism is a multilingual research search engine that helps you find the scientific research your language might otherwise cause you to miss. You ask a question in any of 15 languages (English, Chinese, Spanish, Portuguese, French, German, Japanese, Russian, Korean, Indonesian, Italian, Turkish, Polish, Ukrainian and Arabic). It expands the question into keyword queries in all of them, retrieves candidates from [OpenAlex](https://openalex.org) in each language, ranks the whole pool together with multilingual embeddings plus language-aware BM25, and shows the 100 most relevant papers. There is no per-language quota. Each result explains why it matched.
 
 All results are live OpenAlex records. The app contains no demo data, and missing abstracts, DOIs and languages are shown as missing.
 
@@ -27,7 +27,7 @@ On first start the server downloads the multilingual embedding model (~120 MB) i
 | Title/abstract translation, abstract summaries | **Off.** Controls are disabled with an explanation | `GEMINI_API_KEY` |
 | Crossref supplementary results | Off | `CROSSREF_ENABLED=true` |
 
-Each search makes one OpenAlex keyword search per language (15), one request to size each language's literature, plus up to two broader retries for languages with few hits, so typically 16–30 requests. With a free key (about 1,000 searches a day) that is roughly 40–60 Babel searches a day; without a key, only a handful. Narrow the publication languages in Search settings to use fewer. Source responses are cached in memory for 24 hours.
+Each search makes one OpenAlex keyword search per language (15), one request to size each language's literature, plus up to two broader retries for languages with few hits, so typically 16–30 requests. With a free key (about 1,000 searches a day) that is roughly 40–60 Prism searches a day; without a key, only a handful. Narrow the publication languages in Search settings to use fewer. Source responses are cached in memory for 24 hours.
 
 Both LLM tasks default to `gemini-3.8-flash` (Google Gemini API, structured JSON output). Override them with `LLM_MODEL_FAST` / `LLM_MODEL_SUMMARY`. If a model is overloaded, rate limited or times out, the next model in `LLM_FALLBACK_MODELS` (default `gemini-3.6-flash,gemini-3.5-flash-lite`) is tried, and translations and summaries report which model produced them.
 

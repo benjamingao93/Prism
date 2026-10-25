@@ -21,12 +21,17 @@ interface AppState {
 
 const Ctx = createContext<AppState | null>(null);
 
-const LANG_KEY = "babel-scholar:query-language";
-const SAVED_KEY = "babel-scholar:reading-list";
+const LANG_KEY = "prism:query-language";
+const SAVED_KEY = "prism:reading-list";
+/** Keys used before the rename to Prism; read once so saved papers carry over. */
+const LEGACY_KEYS: Record<string, string> = {
+  [LANG_KEY]: "babel-scholar:query-language",
+  [SAVED_KEY]: "babel-scholar:reading-list",
+};
 
 function readStorage<T>(key: string, fallback: T): T {
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = window.localStorage.getItem(key) ?? window.localStorage.getItem(LEGACY_KEYS[key] ?? "");
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
     return fallback;

@@ -59,6 +59,8 @@
   --background: oklch(0.985 0.002 90);
   --surface: oklch(1 0 0);
   --foreground: oklch(0.23 0.008 260);
+  /* Prism brand ink (logo outline and wordmark), #0F101A. */
+  --brand-ink: #0f101a;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.23 0.008 260);
   --popover: oklch(1 0 0);

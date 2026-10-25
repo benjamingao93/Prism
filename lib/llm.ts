@@ -91,8 +91,8 @@ export async function structuredCall<S extends z.ZodType>(
  * chain for a short while, so every request doesn't wait out the same timeout before falling back.
  */
 const COOLDOWN_MS = 2 * 60 * 1000;
-const cooldownUntil: Map<string, number> = ((globalThis as unknown as { __babelLlmCooldown?: Map<string, number> })
-  .__babelLlmCooldown ??= new Map());
+const cooldownUntil: Map<string, number> = ((globalThis as unknown as { __prismLlmCooldown?: Map<string, number> })
+  .__prismLlmCooldown ??= new Map());
 
 export function orderByAvailability(models: string[], now = Date.now()): string[] {
   const cooling = (m: string) => (cooldownUntil.get(m) ?? 0) > now;

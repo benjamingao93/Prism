@@ -83,7 +83,7 @@ export async function searchCrossref(
     service: "Crossref",
     timeoutMs: 15_000,
     retries: 1,
-    headers: mailto ? { "User-Agent": `BabelScholar/0.1 (mailto:${mailto})` } : {},
+    headers: mailto ? { "User-Agent": `Prism/0.1 (mailto:${mailto})` } : {},
     ...fetchOpts,
   });
   const items = Array.isArray(data?.message?.items) ? data.message.items : [];

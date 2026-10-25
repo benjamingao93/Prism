@@ -8,7 +8,7 @@ import { QUERY_LANGUAGE_OPTIONS } from "@/lib/languages";
 import type { QueryLanguage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppState } from "./AppState";
-import { LogoMark } from "./Logo";
+import { PrismLockup } from "./Logo";
 import { ReadingList } from "./ReadingList";
 
 const NAV = [
@@ -24,9 +24,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-          <LogoMark className="size-7" />
-          <span className="font-serif text-[17px] font-semibold tracking-tight">Babel Scholar</span>
+        <Link href="/" aria-label="Prism home" className="flex items-center rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+          <PrismLockup />
         </Link>
 
         <nav aria-label="Main" className="ml-2 hidden items-center gap-1 md:flex">

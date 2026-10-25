@@ -23,8 +23,8 @@ interface EmbeddingState {
   error: string | null;
 }
 
-const g = globalThis as unknown as { __babelEmbeddings?: EmbeddingState };
-const state: EmbeddingState = (g.__babelEmbeddings ??= {
+const g = globalThis as unknown as { __prismEmbeddings?: EmbeddingState };
+const state: EmbeddingState = (g.__prismEmbeddings ??= {
   status: "idle",
   promise: null,
   extractor: null,

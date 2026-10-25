@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { PrismLockup } from "@/components/Logo";
 
-export const metadata: Metadata = { title: "About — Babel Scholar" };
+export const metadata: Metadata = { title: "About — Prism" };
 
 const SOURCES = [
   ["OpenAlex", "https://openalex.org", "Primary source of scholarly metadata (CC0). Searched live on every query."],
@@ -16,6 +17,7 @@ const SOURCES = [
 export default function About() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <PrismLockup showTagline className="mb-8" />
       <p className="text-sm text-muted-foreground">About</p>
       <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
         Find the research your language might otherwise cause you to miss.
@@ -24,7 +26,7 @@ export default function About() {
         <p>
           Science is published in many languages, but most discovery happens through English queries. A question about drought and
           rice yields will miss papers that describe the same experiments as 干旱胁迫 and 水稻产量, or sequía and rendimiento del arroz.
-          Translation tools help you read what you have already found. Babel Scholar is meant to help you find it in the first place.
+          Translation tools help you read what you have already found. Prism is meant to help you find it in the first place: one question, every language.
         </p>
         <p>
           It is a research prototype. It searches a real, public index and shows its work: which queries ran, which ones found each
@@ -55,7 +57,7 @@ export default function About() {
         ))}
       </dl>
       <p className="mt-4 text-xs text-muted-foreground">
-        Babel Scholar does not scrape Google Scholar or any other search engine, and it does not access full text.
+        Prism does not scrape Google Scholar or any other search engine, and it does not access full text.
       </p>
     </div>
   );

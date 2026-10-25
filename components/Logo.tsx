@@ -1,19 +1,49 @@
-/** Babel Scholar mark: three offset script tiles (Latin, Han, Kana) stacked like a tower. */
+/** Spectrum colors of the Prism mark, top ray to bottom. */
+const RAYS = ["#E5484D", "#F76B15", "#FFC53D", "#30A46C", "#0090FF", "#8E4EC6"];
+
+/**
+ * Prism mark: a triangular prism splitting one beam into a spectrum — one question, every
+ * language. The outline and incoming beam use `currentColor`, so the mark works on light and dark.
+ */
 export function LogoMark({ className }: { className?: string }) {
+  // Triangle apex (50,8), base corners (7,86) and (93,86). Rays fan from where the beam meets
+  // the prism to points just inside the right edge.
+  const origin = { x: 35, y: 56 };
+  const rightEdgeX = (y: number) => 50 + ((y - 8) * 43) / 78 - 3.2;
   return (
-    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
-      <rect x="2" y="15" width="16" height="15" rx="2.5" fill="var(--accent-blue)" />
-      <rect x="9" y="8.5" width="15" height="14" rx="2.5" fill="var(--surface)" stroke="var(--foreground)" strokeWidth="1.6" />
-      <rect x="15" y="2" width="15" height="14" rx="2.5" fill="var(--foreground)" />
-      <text x="10" y="27" fontSize="9" fontWeight="700" fill="white" textAnchor="middle" fontFamily="Georgia, serif">
-        A
-      </text>
-      <text x="16.5" y="19.5" fontSize="8.5" fontWeight="600" fill="var(--foreground)" textAnchor="middle">
-        文
-      </text>
-      <text x="22.5" y="12.5" fontSize="8" fontWeight="600" fill="white" textAnchor="middle">
-        あ
-      </text>
+    <svg viewBox="0 0 100 94" className={className} role="img" aria-label="Prism logo">
+      <path d="M50 8 L93 86 L7 86 Z" fill="none" stroke="currentColor" strokeWidth="5" strokeLinejoin="miter" />
+      <line x1="23.5" y1={origin.y} x2={origin.x} y2={origin.y} stroke="currentColor" strokeWidth="3.6" />
+      {RAYS.map((color, i) => {
+        const y = 31 + i * 9.4;
+        return (
+          <line
+            key={color}
+            x1={origin.x}
+            y1={origin.y}
+            x2={rightEdgeX(y)}
+            y2={y}
+            stroke={color}
+            strokeWidth="3.2"
+            strokeLinecap="butt"
+          />
+        );
+      })}
     </svg>
+  );
+}
+
+export const PRISM_TAGLINE = "One question. Every language.";
+
+/** Mark + lowercase wordmark, matching the brand lockup. */
+export function PrismLockup({ className, showTagline = false }: { className?: string; showTagline?: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-2 ${className ?? ""}`}>
+      <LogoMark className="h-8 w-auto text-[var(--brand-ink)]" />
+      <span className="flex flex-col leading-none">
+        <span className="text-[21px] font-semibold tracking-[-0.03em] text-[var(--brand-ink)]">prism</span>
+        {showTagline && <span className="mt-1 text-xs text-muted-foreground">{PRISM_TAGLINE}</span>}
+      </span>
+    </span>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { HYBRID_WEIGHTS, SEMANTIC_THRESHOLDS } from "@/lib/ranking";
 
-export const metadata: Metadata = { title: "How It Works — Babel Scholar" };
+export const metadata: Metadata = { title: "How It Works — Prism" };
 
 // Measured with `npm run check:embeddings` (scripts/embedding-check.mjs), quantized model, Node.
 // Query: "How does drought stress affect rice crop yields?"
@@ -33,7 +33,7 @@ export default function HowItWorks() {
       <p className="text-sm text-muted-foreground">How It Works</p>
       <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">From one question to many literatures</h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-        Babel Scholar is a retrieval-and-ranking pipeline over public scholarly metadata. Every step below runs on each search, and
+        Prism is a retrieval-and-ranking pipeline over public scholarly metadata. Every step below runs on each search, and
         each result card shows which steps it passed through.
       </p>
 

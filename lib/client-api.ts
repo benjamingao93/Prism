@@ -31,7 +31,7 @@ async function request<T>(path: string, init: RequestInit & { timeoutMs?: number
     if (err instanceof DOMException && err.name === "TimeoutError") {
       throw new ClientApiError("The request took too long. Please try again.", "timeout", 0);
     }
-    throw new ClientApiError("Could not reach the Babel Scholar server.", "network", 0);
+    throw new ClientApiError("Could not reach the Prism server.", "network", 0);
   }
   const body = (await res.json().catch(() => null)) as T | ApiError | null;
   if (!res.ok || body == null) {

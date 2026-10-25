@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Languages Babel Scholar can search in (and accept questions in), ISO 639-1. Chosen from the
+ * Languages Prism can search in (and accept questions in), ISO 639-1. Chosen from the
  * largest abstract-bearing literatures in OpenAlex that the multilingual embedding model supports.
  * Each one adds an OpenAlex request per search.
  */

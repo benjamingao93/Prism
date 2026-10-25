@@ -37,12 +37,12 @@ export class TtlCache<V> {
 
 /** Survive dev-server hot reloads by parking caches on globalThis. */
 export function globalCache<V>(name: string, maxEntries: number, ttlMs: number): TtlCache<V> {
-  const g = globalThis as unknown as { __babelCaches?: Map<string, TtlCache<unknown>> };
-  g.__babelCaches ??= new Map();
-  let cache = g.__babelCaches.get(name) as TtlCache<V> | undefined;
+  const g = globalThis as unknown as { __prismCaches?: Map<string, TtlCache<unknown>> };
+  g.__prismCaches ??= new Map();
+  let cache = g.__prismCaches.get(name) as TtlCache<V> | undefined;
   if (!cache) {
     cache = new TtlCache<V>(maxEntries, ttlMs);
-    g.__babelCaches.set(name, cache as TtlCache<unknown>);
+    g.__prismCaches.set(name, cache as TtlCache<unknown>);
   }
   return cache;
 }
