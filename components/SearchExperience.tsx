@@ -18,14 +18,13 @@ import {
   type RankingMode,
   type SearchResponse,
 } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { useAppState } from "./AppState";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { PaperCard, type PaperTranslation } from "./PaperCard";
 import { ResultsHeader } from "./ResultsHeader";
 import { FlagCollage } from "./Flags";
-import { LogoMark } from "./Logo";
 import { SearchBar } from "./SearchBar";
+import { SpaceHero } from "./space/SpaceHero";
 import { SearchCoverage } from "./SearchCoverage";
 import { DEFAULT_SETTINGS, SearchSettings, type SearchSettingsValue } from "./SearchSettings";
 import { ErrorState, InitialState, NoResults, ResultSkeleton, SourceNote } from "./SearchStates";
@@ -50,6 +49,9 @@ export function SearchExperience() {
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  /** True while the landing's globe zooms into the results (LAUNCH_MS). */
+  const [launching, setLaunching] = useState(false);
+  const endLaunch = useCallback(() => setLaunching(false), []);
   const [translations, setTranslations] = useState<Record<string, PaperTranslation>>({});
   const abortRef = useRef<AbortController | null>(null);
   const requestedRef = useRef(new Set<string>());
@@ -312,78 +314,71 @@ export function SearchExperience() {
       settings.limit !== response.filters.limit ||
       queryLanguage !== response.queryLanguage);
 
-  const hasResults = status === "success" && response;
+  // While the globe zooms in, hold the (heavy) results render so the animation stays smooth.
+  const hasResults = status === "success" && response && !launching;
+  const showSkeleton = status === "loading" || (status === "success" && launching);
+  // Before the first search the page is the space landing; searching launches into the results.
+  const landing = status === "idle";
 
-  // Before the first search, wide screens get a flag collage in the left margin.
-  const landing = !(hasResults || status === "loading");
+  const submit = () => {
+    if (landing) {
+      if (query.trim().length < 2) return;
+      window.scrollTo({ top: 0 });
+      setLaunching(true);
+    }
+    void runSearch(query);
+  };
+
+  const renderSearchControls = (compact: boolean) => (
+    <>
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        onSubmit={submit}
+        loading={status === "loading"}
+        languageLabel={`Query in ${languageName(queryLanguage)}`}
+        compact={compact}
+      />
+      <SearchSettings
+        value={settings}
+        onChange={setSettings}
+        availableModes={
+          response?.availableModes ??
+          (caps?.embeddings === "failed" || caps?.embeddings === "disabled" ? ["keyword"] : ["hybrid", "semantic", "keyword"])
+        }
+        llmAvailable={llmAvailable}
+      />
+      {filtersChanged && (
+        <Notice tone="info">
+          <span className="flex flex-wrap items-center gap-2">
+            Retrieval settings changed since this search.
+            <Button size="xs" variant="outline" onClick={() => runSearch(lastQueryRef.current || query)}>
+              <RefreshCw /> Update results
+            </Button>
+          </span>
+        </Notice>
+      )}
+    </>
+  );
 
   return (
-    <div
-      className={cn(
-        "mx-auto px-4 sm:px-6",
-        landing ? "max-w-6xl xl:grid xl:max-w-[80rem] xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-10" : "max-w-6xl",
+    <>
+      {(landing || launching) && (
+        <SpaceHero launching={launching} onLaunchEnd={endLaunch} side={<FlagCollage className="h-full" />}>
+          {renderSearchControls(false)}
+        </SpaceHero>
       )}
-    >
-      {landing && <FlagCollage className="mt-20 mb-16 hidden xl:block" />}
-      <div className="min-w-0">
-        <section className={hasResults || status === "loading" ? "pt-6 pb-5" : "pt-14 pb-8 sm:pt-20"}>
-          {!(hasResults || status === "loading") && (
-            <div className="mb-8 flex items-center justify-between gap-10">
-              <div className="max-w-2xl">
-                <h1 className="font-serif text-[2rem] leading-[1.1] font-semibold tracking-tight sm:text-5xl">
-                  Research has no single language.
-                </h1>
-                <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
-                  Discover relevant scientific papers across languages with multilingual search and semantic relevance ranking.
-                </p>
-              </div>
-              <div aria-hidden="true" className="relative hidden shrink-0 md:block">
-                {/* Soft spectrum glow behind the mark. */}
-                <div className="absolute inset-4 rounded-full bg-[conic-gradient(from_200deg,#E5484D33,#F76B1533,#FFC53D33,#30A46C33,#0090FF33,#8E4EC633,#E5484D33)] blur-2xl" />
-                <LogoMark className="relative h-40 w-auto text-[var(--brand-ink)] lg:h-48" />
-              </div>
-            </div>
-          )}
-          <div className="space-y-3">
-            <SearchBar
-              value={query}
-              onChange={setQuery}
-              onSubmit={() => runSearch(query)}
-              loading={status === "loading"}
-              languageLabel={`Query in ${languageName(queryLanguage)}`}
-              compact={Boolean(hasResults)}
-            />
-            <SearchSettings
-              value={settings}
-              onChange={setSettings}
-              availableModes={
-                response?.availableModes ??
-                (caps?.embeddings === "failed" || caps?.embeddings === "disabled" ? ["keyword"] : ["hybrid", "semantic", "keyword"])
-              }
-              llmAvailable={llmAvailable}
-            />
-            {filtersChanged && (
-              <Notice tone="info">
-                <span className="flex flex-wrap items-center gap-2">
-                  Retrieval settings changed since this search.
-                  <Button size="xs" variant="outline" onClick={() => runSearch(lastQueryRef.current || query)}>
-                    <RefreshCw /> Update results
-                  </Button>
-                </span>
-              </Notice>
-            )}
-          </div>
-        </section>
+      {landing ? (
+        <div className="mx-auto max-w-6xl space-y-4 px-4 py-12 sm:px-6">
+          <CapabilityNotices caps={caps} />
+          <InitialState />
+        </div>
+      ) : (
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <section className="space-y-3 pt-6 pb-5">{renderSearchControls(true)}</section>
 
         <div className="pb-16">
-          {status === "idle" && (
-            <div className="space-y-4">
-              <CapabilityNotices caps={caps} />
-              <InitialState />
-            </div>
-          )}
-
-          {status === "loading" && (
+          {showSkeleton && (
             <ResultSkeleton
               note={
                 caps?.embeddings === "loading"
@@ -496,7 +491,8 @@ export function SearchExperience() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }

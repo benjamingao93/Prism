@@ -186,6 +186,16 @@
   animation: fade-in-up 220ms ease-out both;
 }
 
+/* Fallback globe (no WebGL): slide the map texture to suggest rotation. */
+@keyframes prism-globe-spin {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: -200% 50%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up {
     animation: none;
