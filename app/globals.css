@@ -56,7 +56,7 @@
 
 :root {
   /* Editorial research palette: warm-neutral canvas, white surfaces, charcoal ink, restrained blue. */
-  --background: oklch(0.985 0.002 90);
+  --background: oklch(0.972 0.014 85); /* soft warm beige; cards stay white */
   --surface: oklch(1 0 0);
   --foreground: oklch(0.23 0.008 260);
   /* Prism brand ink (logo outline and wordmark), #0F101A. */
