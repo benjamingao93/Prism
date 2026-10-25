@@ -11,13 +11,16 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "check:embeddings": "node scripts/embedding-check.mjs",
-    "test:live": "vitest run --config tests/live/vitest.live.mts"
+    "test:live": "vitest run --config tests/live/vitest.live.mts",
+    "predev": "node scripts/copy-flags.mjs",
+    "prebuild": "node scripts/copy-flags.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",
     "@huggingface/transformers": "^4.3.1",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
+    "country-flag-icons": "^1.6.20",
     "d3-geo": "^3.1.1",
     "i18n-iso-countries": "^7.14.0",
     "lucide-react": "^1.61.0",

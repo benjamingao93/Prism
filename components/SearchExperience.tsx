@@ -18,10 +18,12 @@ import {
   type RankingMode,
   type SearchResponse,
 } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { useAppState } from "./AppState";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { PaperCard, type PaperTranslation } from "./PaperCard";
 import { ResultsHeader } from "./ResultsHeader";
+import { FlagCollage } from "./Flags";
 import { LogoMark } from "./Logo";
 import { SearchBar } from "./SearchBar";
 import { SearchCoverage } from "./SearchCoverage";
@@ -312,177 +314,188 @@ export function SearchExperience() {
 
   const hasResults = status === "success" && response;
 
+  // Before the first search, wide screens get a flag collage in the left margin.
+  const landing = !(hasResults || status === "loading");
+
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6">
-      <section className={hasResults || status === "loading" ? "pt-6 pb-5" : "pt-14 pb-8 sm:pt-20"}>
-        {!(hasResults || status === "loading") && (
-          <div className="mb-8 flex items-center justify-between gap-10">
-            <div className="max-w-2xl">
-              <h1 className="font-serif text-[2rem] leading-[1.1] font-semibold tracking-tight sm:text-5xl">
-                Research has no single language.
-              </h1>
-              <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Discover relevant scientific papers across languages with multilingual search and semantic relevance ranking.
-              </p>
+    <div
+      className={cn(
+        "mx-auto px-4 sm:px-6",
+        landing ? "max-w-6xl xl:grid xl:max-w-[80rem] xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-10" : "max-w-6xl",
+      )}
+    >
+      {landing && <FlagCollage className="mt-20 mb-16 hidden xl:block" />}
+      <div className="min-w-0">
+        <section className={hasResults || status === "loading" ? "pt-6 pb-5" : "pt-14 pb-8 sm:pt-20"}>
+          {!(hasResults || status === "loading") && (
+            <div className="mb-8 flex items-center justify-between gap-10">
+              <div className="max-w-2xl">
+                <h1 className="font-serif text-[2rem] leading-[1.1] font-semibold tracking-tight sm:text-5xl">
+                  Research has no single language.
+                </h1>
+                <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
+                  Discover relevant scientific papers across languages with multilingual search and semantic relevance ranking.
+                </p>
+              </div>
+              <div aria-hidden="true" className="relative hidden shrink-0 md:block">
+                {/* Soft spectrum glow behind the mark. */}
+                <div className="absolute inset-4 rounded-full bg-[conic-gradient(from_200deg,#E5484D33,#F76B1533,#FFC53D33,#30A46C33,#0090FF33,#8E4EC633,#E5484D33)] blur-2xl" />
+                <LogoMark className="relative h-40 w-auto text-[var(--brand-ink)] lg:h-48" />
+              </div>
             </div>
-            <div aria-hidden="true" className="relative hidden shrink-0 md:block">
-              {/* Soft spectrum glow behind the mark. */}
-              <div className="absolute inset-4 rounded-full bg-[conic-gradient(from_200deg,#E5484D33,#F76B1533,#FFC53D33,#30A46C33,#0090FF33,#8E4EC633,#E5484D33)] blur-2xl" />
-              <LogoMark className="relative h-40 w-auto text-[var(--brand-ink)] lg:h-48" />
-            </div>
+          )}
+          <div className="space-y-3">
+            <SearchBar
+              value={query}
+              onChange={setQuery}
+              onSubmit={() => runSearch(query)}
+              loading={status === "loading"}
+              languageLabel={`Query in ${languageName(queryLanguage)}`}
+              compact={Boolean(hasResults)}
+            />
+            <SearchSettings
+              value={settings}
+              onChange={setSettings}
+              availableModes={
+                response?.availableModes ??
+                (caps?.embeddings === "failed" || caps?.embeddings === "disabled" ? ["keyword"] : ["hybrid", "semantic", "keyword"])
+              }
+              llmAvailable={llmAvailable}
+            />
+            {filtersChanged && (
+              <Notice tone="info">
+                <span className="flex flex-wrap items-center gap-2">
+                  Retrieval settings changed since this search.
+                  <Button size="xs" variant="outline" onClick={() => runSearch(lastQueryRef.current || query)}>
+                    <RefreshCw /> Update results
+                  </Button>
+                </span>
+              </Notice>
+            )}
           </div>
-        )}
-        <div className="space-y-3">
-          <SearchBar
-            value={query}
-            onChange={setQuery}
-            onSubmit={() => runSearch(query)}
-            loading={status === "loading"}
-            languageLabel={`Query in ${languageName(queryLanguage)}`}
-            compact={Boolean(hasResults)}
-          />
-          <SearchSettings
-            value={settings}
-            onChange={setSettings}
-            availableModes={
-              response?.availableModes ??
-              (caps?.embeddings === "failed" || caps?.embeddings === "disabled" ? ["keyword"] : ["hybrid", "semantic", "keyword"])
-            }
-            llmAvailable={llmAvailable}
-          />
-          {filtersChanged && (
-            <Notice tone="info">
-              <span className="flex flex-wrap items-center gap-2">
-                Retrieval settings changed since this search.
-                <Button size="xs" variant="outline" onClick={() => runSearch(lastQueryRef.current || query)}>
-                  <RefreshCw /> Update results
-                </Button>
-              </span>
-            </Notice>
+        </section>
+
+        <div className="pb-16">
+          {status === "idle" && (
+            <div className="space-y-4">
+              <CapabilityNotices caps={caps} />
+              <InitialState />
+            </div>
+          )}
+
+          {status === "loading" && (
+            <ResultSkeleton
+              note={
+                caps?.embeddings === "loading"
+                  ? "Retrieving papers… the embedding model is still loading on first run."
+                  : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking candidates from each in proportion to its literature…`
+              }
+            />
+          )}
+
+          {status === "error" && error && <ErrorState message={error.message} code={error.code} onRetry={() => runSearch(lastQueryRef.current || query)} />}
+
+          {hasResults && (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+              <div className="min-w-0 space-y-4">
+                <ResultsHeader
+                  response={response}
+                  mode={mode}
+                  onModeChange={(m) => setSettings((s) => ({ ...s, mode: m }))}
+                  shownCount={displayed.length}
+                  topCount={topResults.length}
+                  refine={refine}
+                  country={country}
+                  onClearCountry={() => setCountry(null)}
+                  minScore={settings.minScore}
+                  onClearRefine={() => setRefine([])}
+                />
+                {response.notices.length > 0 && (
+                  <div className="space-y-1.5">
+                    {response.notices.map((n) => (
+                      <Notice key={n} tone={/unavailable|failed|left out/i.test(n) ? "warning" : "info"}>
+                        {n}
+                      </Notice>
+                    ))}
+                  </div>
+                )}
+
+                {comparison && <ComparisonPanel comparison={comparison} candidateCount={response.candidateCount} />}
+
+                {displayed.length === 0 ? (
+                  <NoResults
+                    filtered={response.papers.length > 0}
+                    onReset={() => {
+                      setRefine([]);
+                      setCountry(null);
+                      setSettings((s) => ({ ...s, minScore: 0 }));
+                    }}
+                  />
+                ) : (
+                  <div className="space-y-3" data-testid="results-list">
+                    {shown.map((p, i) => (
+                      <PaperCard
+                        key={p.id}
+                        paper={p}
+                        mode={mode}
+                        position={i + 1}
+                        variants={variantMap}
+                        targetLang={targetLang}
+                        translation={translations[p.id]}
+                        translationEnabled={translationEnabled}
+                        llmAvailable={llmAvailable}
+                        onTranslateAbstract={translateAbstract}
+                      />
+                    ))}
+                    <div className="flex flex-col items-center gap-1.5 pt-2 text-center">
+                      {displayed.length > visible ? (
+                        <Button variant="outline" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
+                          <ChevronDown /> Show more ({displayed.length - visible} remaining)
+                        </Button>
+                      ) : response.canLoadMore ? (
+                        <>
+                          <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                            {loadingMore ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+                            {loadingMore ? "Searching deeper in every language…" : `Load ${response.filters.limit} more results`}
+                          </Button>
+                          <p className="text-xs text-muted-foreground">
+                            Searches one page deeper in every language and re-ranks everything together.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          {response.filters.pages >= MAX_PAGES
+                            ? `That's the deepest Prism searches (${resultCount(response.filters)} results).`
+                            : "No more results: every language's matches have been retrieved."}
+                        </p>
+                      )}
+                      {loadMoreError && (
+                        <p role="alert" className="text-xs text-destructive">
+                          {loadMoreError}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <SourceNote />
+              </div>
+
+              <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+                {coverage && (
+                  <SearchCoverage
+                    coverage={coverage}
+                    candidateCount={response.candidateCount}
+                    variants={response.variants}
+                    refine={refine}
+                    onToggleRefine={(code) =>
+                      setRefine((r) => (r.includes(code) ? r.filter((c) => c !== code) : [...r, code]))
+                    }
+                  />
+                )}
+              </aside>
+            </div>
           )}
         </div>
-      </section>
-
-      <div className="pb-16">
-        {status === "idle" && (
-          <div className="space-y-4">
-            <CapabilityNotices caps={caps} />
-            <InitialState />
-          </div>
-        )}
-
-        {status === "loading" && (
-          <ResultSkeleton
-            note={
-              caps?.embeddings === "loading"
-                ? "Retrieving papers… the embedding model is still loading on first run."
-                : `Searching ${settings.publicationLanguages.length || QUERY_LANGUAGES.length} languages, then ranking candidates from each in proportion to its literature…`
-            }
-          />
-        )}
-
-        {status === "error" && error && <ErrorState message={error.message} code={error.code} onRetry={() => runSearch(lastQueryRef.current || query)} />}
-
-        {hasResults && (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
-            <div className="min-w-0 space-y-4">
-              <ResultsHeader
-                response={response}
-                mode={mode}
-                onModeChange={(m) => setSettings((s) => ({ ...s, mode: m }))}
-                shownCount={displayed.length}
-                topCount={topResults.length}
-                refine={refine}
-                country={country}
-                onClearCountry={() => setCountry(null)}
-                minScore={settings.minScore}
-                onClearRefine={() => setRefine([])}
-              />
-              {response.notices.length > 0 && (
-                <div className="space-y-1.5">
-                  {response.notices.map((n) => (
-                    <Notice key={n} tone={/unavailable|failed|left out/i.test(n) ? "warning" : "info"}>
-                      {n}
-                    </Notice>
-                  ))}
-                </div>
-              )}
-
-              {comparison && <ComparisonPanel comparison={comparison} candidateCount={response.candidateCount} />}
-
-              {displayed.length === 0 ? (
-                <NoResults
-                  filtered={response.papers.length > 0}
-                  onReset={() => {
-                    setRefine([]);
-                    setCountry(null);
-                    setSettings((s) => ({ ...s, minScore: 0 }));
-                  }}
-                />
-              ) : (
-                <div className="space-y-3" data-testid="results-list">
-                  {shown.map((p, i) => (
-                    <PaperCard
-                      key={p.id}
-                      paper={p}
-                      mode={mode}
-                      position={i + 1}
-                      variants={variantMap}
-                      targetLang={targetLang}
-                      translation={translations[p.id]}
-                      translationEnabled={translationEnabled}
-                      llmAvailable={llmAvailable}
-                      onTranslateAbstract={translateAbstract}
-                    />
-                  ))}
-                  <div className="flex flex-col items-center gap-1.5 pt-2 text-center">
-                    {displayed.length > visible ? (
-                      <Button variant="outline" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
-                        <ChevronDown /> Show more ({displayed.length - visible} remaining)
-                      </Button>
-                    ) : response.canLoadMore ? (
-                      <>
-                        <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
-                          {loadingMore ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
-                          {loadingMore ? "Searching deeper in every language…" : `Load ${response.filters.limit} more results`}
-                        </Button>
-                        <p className="text-xs text-muted-foreground">
-                          Searches one page deeper in every language and re-ranks everything together.
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        {response.filters.pages >= MAX_PAGES
-                          ? `That's the deepest Prism searches (${resultCount(response.filters)} results).`
-                          : "No more results: every language's matches have been retrieved."}
-                      </p>
-                    )}
-                    {loadMoreError && (
-                      <p role="alert" className="text-xs text-destructive">
-                        {loadMoreError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              <SourceNote />
-            </div>
-
-            <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-              {coverage && (
-                <SearchCoverage
-                  coverage={coverage}
-                  candidateCount={response.candidateCount}
-                  variants={response.variants}
-                  refine={refine}
-                  onToggleRefine={(code) =>
-                    setRefine((r) => (r.includes(code) ? r.filter((c) => c !== code) : [...r, code]))
-                  }
-                />
-              )}
-            </aside>
-          </div>
-        )}
       </div>
     </div>
   );

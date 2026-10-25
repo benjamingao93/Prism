@@ -2,7 +2,7 @@
 
 import { geoEqualEarth, geoPath } from "d3-geo";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
-import { ArrowLeft, Globe2, MapPin } from "lucide-react";
+import { ArrowLeft, Globe2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import { sortByMode } from "@/lib/ranking";
 import { resultCount } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppState } from "./AppState";
+import { Flag } from "./Flags";
 import { MODE_LABELS } from "./RankingInfo";
 
 const WIDTH = 960;
@@ -129,6 +130,31 @@ export function PublicationMap() {
         </Button>
       </div>
 
+      {countries.length > 0 && (
+        <section aria-label="Publication countries" className="mt-5 rounded-3xl border bg-surface px-4 py-3">
+          <div className="flex items-center gap-4 overflow-x-auto pt-2 pr-2 pb-1">
+            <span className="shrink-0 text-xs font-medium tracking-wide text-muted-foreground uppercase">Published in</span>
+            {countries.map((c) => (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => goTo(c.code)}
+                title={`${countryName(c.code)}: ${c.count} ${c.count === 1 ? "paper" : "papers"}. Show them in Search.`}
+                className="group relative shrink-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <Flag code={c.code} className="h-8 w-auto transition-transform duration-150 group-hover:-translate-y-0.5 group-hover:scale-105" />
+                <span className="tabular absolute -top-1.5 -right-1.5 rounded-full bg-[var(--brand-ink)] px-1.5 text-[10px] leading-4 font-semibold text-[var(--background)]">
+                  {c.count}
+                </span>
+                <span className="sr-only">
+                  {countryName(c.code)}: {c.count} papers
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]">
         <section aria-label="World map of publication countries" className="min-w-0 self-start rounded-lg border bg-surface p-3 sm:p-4">
           {known === 0 ? (
@@ -225,8 +251,8 @@ export function PublicationMap() {
                     onMouseEnter={() => setHover(null)}
                     className="grid w-full grid-cols-[minmax(0,8.5rem)_1fr_auto] items-center gap-2 rounded px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted"
                   >
-                    <span className="flex items-center gap-1 truncate">
-                      <MapPin className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Flag code={c.code} className="h-3 w-auto shrink-0" />
                       {countryName(c.code)}
                     </span>
                     <span className="h-1.5 overflow-hidden rounded-full bg-secondary">

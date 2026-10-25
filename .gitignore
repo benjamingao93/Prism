@@ -47,3 +47,6 @@ next-env.d.ts
 # playwright
 /test-results/
 /playwright-report/
+
+# copied from country-flag-icons by scripts/copy-flags.mjs
+/public/flags/
