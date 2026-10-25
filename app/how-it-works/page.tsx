@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GAP_MIN_COUNT, GAP_MIN_DIFF, GAP_MIN_PAPERS, GAP_SAMPLE_PER_LANGUAGE } from "@/lib/gaps";
 import { HYBRID_WEIGHTS, SEMANTIC_THRESHOLDS } from "@/lib/ranking";
 
 export const metadata: Metadata = { title: "How It Works — Prism" };
@@ -136,6 +137,29 @@ export default function HowItWorks() {
           venue’s country, not the authors’ location or the paper’s language. Clicking a country returns to your results with a
           publication-country filter, without searching again.
         </p>
+      </section>
+
+      <section className="border-t py-6">
+        <h2 className="font-serif text-xl font-semibold">Language gaps</h2>
+        <div className="mt-2 space-y-3 text-[15px] leading-relaxed text-secondary-foreground">
+          <p>
+            The Gaps tab asks what each language’s research on your question discusses that others rarely do. Your search’s query
+            in each language is re-run with the same parameters, so OpenAlex answers from the cache. The {GAP_SAMPLE_PER_LANGUAGE}{" "}
+            most relevant matches in each language are sampled by semantic similarity to your question. Every language gets its
+            own sample, however small its literature. Languages with fewer than {GAP_MIN_PAPERS} papers are listed but not compared.
+          </p>
+          <p>
+            Gemini reads the sampled titles and abstracts once. It names the themes they discuss, such as specific aspects,
+            methods, settings or perspectives, and tags each paper whose own text covers each theme. Prism, not the model, then
+            counts what share of each language’s papers discuss each theme and compares it with a baseline language (English by
+            default). A difference is pointed out when at least {GAP_MIN_COUNT} papers cover the theme and the shares differ by at
+            least {Math.round(GAP_MIN_DIFF * 100)} percentage points. Every finding opens the papers behind it.
+          </p>
+          <p>
+            The samples are small and judged from titles and abstracts only. A theme absent from a sample is a lead to explore,
+            not proof that a language’s literature lacks it. The short overview at the top is written by Gemini and labeled as such.
+          </p>
+        </div>
       </section>
 
       <section className="mt-4 rounded-lg border bg-surface p-5">

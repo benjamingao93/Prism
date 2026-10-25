@@ -1,3 +1,4 @@
+import type { GapsRequest, GapsResponse } from "./gaps";
 import type {
   ApiError,
   Capabilities,
@@ -48,5 +49,7 @@ export const api = {
     request<TranslateResponse>("/api/translate", { method: "POST", body: JSON.stringify(input), signal, timeoutMs: 90_000 }),
   summarize: (input: { id: string; title: string | null; abstract: string; targetLang: string }) =>
     request<SummarizeResponse>("/api/summarize", { method: "POST", body: JSON.stringify(input), timeoutMs: 90_000 }),
+  gaps: (input: GapsRequest, signal?: AbortSignal) =>
+    request<GapsResponse>("/api/gaps", { method: "POST", body: JSON.stringify(input), signal, timeoutMs: 180_000 }),
   status: () => request<Capabilities>("/api/status", { method: "GET", timeoutMs: 10_000 }),
 };

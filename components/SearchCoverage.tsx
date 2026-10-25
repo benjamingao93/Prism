@@ -32,9 +32,14 @@ export function SearchCoverage({ coverage, candidateCount, variants, refine, onT
         <h2 id="coverage-title" className="font-serif text-base font-semibold">
           Search coverage
         </h2>
-        <Link href="/map" className="text-xs text-accent-brand hover:underline">
-          View on map
-        </Link>
+        <span className="flex gap-3">
+          <Link href="/gaps" className="text-xs text-accent-brand hover:underline">
+            Find gaps
+          </Link>
+          <Link href="/map" className="text-xs text-accent-brand hover:underline">
+            View on map
+          </Link>
+        </span>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">Computed from the top results shown, ranked from all candidates.</p>
 

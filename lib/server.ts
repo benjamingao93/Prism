@@ -1,8 +1,11 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { globalCache } from "./cache";
 import { searchCrossref, type CrossrefSearchParams } from "./crossref";
 import { embeddingModelName, embeddingStatus, semanticScores } from "./embeddings";
 import { env, modelChain } from "./env";
+import type { GapDeps } from "./gap-analysis";
+import { GapOverviewSchema, GapThemesSchema, type GapThemesOutput } from "./gaps";
 import { llmConfigured, structuredCall } from "./llm";
 import { countWorksByLanguage, fetchSourceCountries, searchOpenAlex, type OpenAlexSearchParams, type SearchResult } from "./openalex";
 import { expandQuery, ExpansionSchema } from "./query-expansion";
@@ -16,6 +19,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const sourceCache = globalCache<SearchResult>("source-responses", 1000, DAY);
 const countCache = globalCache<Record<string, number>>("language-counts", 1000, DAY);
 const languageCache = globalCache<string>("language-checks", 20_000, 7 * DAY);
+const gapThemeCache = globalCache<{ data: GapThemesOutput; model: string }>("gap-themes", 200, DAY);
 // Venue countries rarely change; "" records a known absence.
 const sourceCountryCache = globalCache<string>("source-countries", 50_000, 30 * DAY);
 
@@ -123,6 +127,44 @@ export function searchDeps(): SearchDeps {
       : null,
     semantic: (queryTexts, papers, field) => semanticScores(queryTexts, papers, { field }),
     capabilities,
+  };
+}
+
+/** Search dependencies plus the theme-tagging LLM call, cached by its exact prompt. */
+export function gapDeps(): GapDeps {
+  const e = env();
+  const { searchOpenAlex, checkLanguages, semantic } = searchDeps();
+  return {
+    searchOpenAlex,
+    checkLanguages,
+    semantic,
+    themes: async (system, prompt) => {
+      const key = createHash("sha256").update(system).update("\n").update(prompt).digest("hex");
+      const hit = gapThemeCache.get(key);
+      if (hit) return hit;
+      const result = await structuredCall(GapThemesSchema, {
+        models: modelChain(e.LLM_MODEL_SUMMARY),
+        system,
+        prompt,
+        // Up to ~270 papers to tag, plus thinking.
+        maxTokens: 20_000,
+        thinking: "low",
+        timeoutMs: 90_000,
+      });
+      gapThemeCache.set(key, result);
+      return result;
+    },
+    overview: async (system, prompt) =>
+      (
+        await structuredCall(GapOverviewSchema, {
+          models: modelChain(e.LLM_MODEL_FAST),
+          system,
+          prompt,
+          maxTokens: 2000,
+          thinking: "low",
+          timeoutMs: 20_000,
+        })
+      ).data.overview,
   };
 }
 

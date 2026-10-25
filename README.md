@@ -29,6 +29,8 @@ Science is published in many languages, but most literature discovery happens th
 
 - **Map where it was published.** The Map tab shades a world map by how many of your latest search's top results were published in each country, using the country of the journal, repository or publisher as recorded by OpenAlex. Click a country to return to your results filtered to papers published there.
 
+- **Find gaps between languages.** The Gaps tab samples the 15 most relevant papers in each language for your latest search. Gemini names the themes they discuss and tags each paper that covers one; Prism counts the tags to show what each language's research emphasizes or leaves out compared with English (or any language you pick), e.g. "5 of 8 Hindi papers vs 1 of 15 English papers". Every finding links to the papers behind it. Samples are small, so differences are leads, not proof.
+
 Also included: Hybrid / Semantic / Keyword ranking modes, filters for publication language, year and minimum relevance, a comparison against an original-language-only search, and a reading list stored in your browser.
 
 ## Quick start
@@ -50,6 +52,7 @@ Every variable is optional, and the app tells you when a feature is off.
 | Paper search (OpenAlex) | Works, but all keyless users on your network share about 100 searches a day | `OPENALEX_API_KEY`: free, ~1,000 a day ([get one](https://openalex.org/settings/api)) |
 | Searching in 18 languages | **Off.** Only your original question is searched | `GEMINI_API_KEY` ([get one](https://aistudio.google.com/apikey)) |
 | Translated titles, abstracts and summaries | **Off.** The controls explain why | `GEMINI_API_KEY` |
+| Language gaps | **Off.** The Gaps tab explains why | `GEMINI_API_KEY` |
 | Multilingual semantic ranking | Works (local model, no key) | On by default; `EMBEDDINGS_ENABLED=false` turns it off |
 | Crossref as a supplementary source | Off | `CROSSREF_ENABLED=true` |
 

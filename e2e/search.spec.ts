@@ -196,6 +196,72 @@ test("Load more searches one page deeper and shows more results", async ({ page 
   await expect(page.getByText("No more results")).toBeVisible();
 });
 
+test("gaps compares themes across languages and links each finding to its papers", async ({ page }) => {
+  await mockApi(page, () => ({ status: 200, json: response }));
+  let gapsBody: Record<string, unknown> | null = null;
+  const gapPaper = (id: string, title: string, language: string) => ({ id, title, language, year: 2021, venue: "Test Venue", url: `https://example.org/${id}` });
+  await page.route("**/api/gaps", async (route) => {
+    gapsBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      json: {
+        query: response.query,
+        queryLanguage: "en",
+        model: "test-model",
+        languages: [
+          { code: "zh", total: 3 },
+          { code: "en", total: 2 },
+        ],
+        excluded: [{ code: "es", total: 1 }],
+        offTopic: [{ code: "es", count: 2 }],
+        themes: [
+          { id: "T1", label: "TEST Water-saving irrigation", description: "Synthetic theme.", papers: { zh: ["C", "C2", "C3"] } },
+          { id: "T2", label: "TEST Yield modelling", description: "Synthetic theme.", papers: { en: ["A", "B"] } },
+        ],
+        papers: [
+          gapPaper("A", "TEST Alpha", "en"),
+          gapPaper("B", "TEST Beta", "en"),
+          gapPaper("C", "TEST Gamma 干旱", "zh"),
+          gapPaper("C2", "TEST Gamma two 干旱", "zh"),
+          gapPaper("C3", "TEST Gamma three 干旱", "zh"),
+        ],
+        overview: "TEST overview: the Chinese sample focuses on irrigation.",
+        notices: [],
+        tookMs: 5,
+      },
+    });
+  });
+  await page.route("**/api/translate", (route) => route.fulfill({ status: 503, json: { error: "no llm", code: "llm_unavailable" } }));
+
+  await page.goto("/");
+  await page.getByLabel("Research question").fill("How does drought affect rice?");
+  await page.getByLabel("Research question").press("Enter");
+  await expect(page.getByTestId("paper-card")).toHaveCount(3);
+
+  await page.getByRole("link", { name: "Gaps", exact: true }).first().click();
+  await expect(page.getByText("TEST overview: the Chinese sample focuses on irrigation.")).toBeVisible();
+  expect(gapsBody).toMatchObject({ query: response.query, limit: 100, variants: [{ lang: "en", searchQuery: "drought rice" }, { lang: "zh", searchQuery: "干旱 水稻" }] });
+
+  // English is the default baseline; Chinese covers irrigation more and yield modelling less.
+  const chinese = page.getByRole("region", { name: "Chinese compared with English" });
+  await expect(chinese.getByText("Discussed more than in English")).toBeVisible();
+  await expect(chinese.getByText("3 of 3 (100%)")).toBeVisible();
+  await expect(chinese.getByText("Discussed less than in English")).toBeVisible();
+  await chinese.getByRole("button", { name: /Show the 3 papers behind this/ }).click();
+  await expect(chinese.getByRole("link", { name: /TEST Gamma three/ })).toBeVisible();
+
+  // The matrix links each cell to its papers.
+  await page.getByRole("button", { name: "TEST Yield modelling, English: 2 of 2 papers" }).click();
+  await expect(page.getByRole("link", { name: /TEST Beta/ })).toBeVisible();
+  await expect(page.getByText("Too few relevant papers to compare (fewer than 3): Spanish (1).")).toBeVisible();
+  await expect(page.getByText(/Set aside as not about your question .*: Spanish \(2\)\./)).toBeVisible();
+});
+
+test("gaps explains when there is no search yet", async ({ page }) => {
+  await page.route("**/api/status", (route) => route.fulfill({ json: caps }));
+  await page.goto("/gaps");
+  await expect(page.getByRole("heading", { name: "No search to compare yet" })).toBeVisible();
+});
+
 test("theme switch turns on dark mode and remembers it", async ({ browser }) => {
   const context = await browser.newContext({ colorScheme: "light" });
   const page = await context.newPage();
