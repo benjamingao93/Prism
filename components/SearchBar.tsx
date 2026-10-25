@@ -4,13 +4,6 @@ import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export const EXAMPLE_QUERIES = [
-  "How do microplastics affect marine ecosystems?",
-  "Machine learning methods for early melanoma detection",
-  "Drought-resistant rice varieties and agricultural adaptation",
-  "Effects of urban air pollution on childhood asthma",
-];
-
 interface SearchBarProps {
   value: string;
   onChange: (v: string) => void;
@@ -64,24 +57,5 @@ export function SearchBar({ value, onChange, onSubmit, loading, languageLabel, c
         <span className="hidden sm:inline">{loading ? "Searching" : "Search"}</span>
       </Button>
     </form>
-  );
-}
-
-export function ExampleQueries({ onPick, disabled }: { onPick: (q: string) => void; disabled?: boolean }) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">Try:</span>
-      {EXAMPLE_QUERIES.map((q) => (
-        <button
-          key={q}
-          type="button"
-          disabled={disabled}
-          onClick={() => onPick(q)}
-          className="rounded-full border bg-surface px-3 py-1 text-left text-[13px] text-secondary-foreground transition-colors hover:border-accent-blue/40 hover:text-accent-blue disabled:opacity-50"
-        >
-          {q}
-        </button>
-      ))}
-    </div>
   );
 }

@@ -66,8 +66,15 @@ export interface Paper {
   year: number | null;
   venue: string | null;
   abstract: string | null;
-  /** ISO 639-1 publication language from source metadata, or null if unavailable. */
+  /**
+   * ISO 639-1 language of the paper: the source's tag, unless the title/abstract text was checked
+   * and found to be in a different language (see `languageSource`). Null if unavailable.
+   */
   language: string | null;
+  /** The language tag exactly as the source reported it. */
+  languageTag: string | null;
+  /** "metadata": `language` is the source tag. "detected": Gemini found the text is in another language. */
+  languageSource: "metadata" | "detected";
   landingUrl: string | null;
   oaUrl: string | null;
   isOpenAccess: boolean | null;

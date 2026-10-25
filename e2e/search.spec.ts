@@ -23,6 +23,8 @@ function paper(id: string, title: string, language: string | null, semanticRaw: 
     venue: "Test Venue",
     abstract: `Synthetic abstract for ${title}.`,
     language,
+    languageTag: language,
+    languageSource: "metadata",
     landingUrl: `https://example.org/${id}`,
     oaUrl: null,
     isOpenAccess: null,
@@ -116,7 +118,8 @@ test("shows a clear error when the search budget is exhausted", async ({ page })
     json: { error: "OpenAlex rate limit or daily budget reached.", code: "rate_limited" },
   }));
   await page.goto("/");
-  await page.getByRole("button", { name: "Machine learning methods for early melanoma detection" }).click();
+  await page.getByLabel("Research question").fill("Machine learning methods for early melanoma detection");
+  await page.getByLabel("Research question").press("Enter");
   await expect(page.getByRole("alert").filter({ hasText: "Search limit" })).toContainText("Search limit reached");
   await expect(page.getByRole("alert").filter({ hasText: "Search limit" })).toContainText("daily budget");
 });

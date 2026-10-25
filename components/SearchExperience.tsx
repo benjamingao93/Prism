@@ -13,7 +13,7 @@ import { useAppState } from "./AppState";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { PaperCard, type PaperTranslation } from "./PaperCard";
 import { ResultsHeader } from "./ResultsHeader";
-import { ExampleQueries, SearchBar } from "./SearchBar";
+import { SearchBar } from "./SearchBar";
 import { SearchCoverage } from "./SearchCoverage";
 import { DEFAULT_SETTINGS, SearchSettings, type SearchSettingsValue } from "./SearchSettings";
 import { ErrorState, InitialState, NoResults, ResultSkeleton, SourceNote } from "./SearchStates";
@@ -250,15 +250,6 @@ export function SearchExperience() {
             languageLabel={`Query in ${languageName(queryLanguage)}`}
             compact={Boolean(hasResults)}
           />
-          <div className={hasResults ? "hidden sm:block" : undefined}>
-            <ExampleQueries
-            disabled={status === "loading"}
-            onPick={(q) => {
-              setQuery(q);
-              void runSearch(q);
-            }}
-            />
-          </div>
           <SearchSettings
             value={settings}
             onChange={setSettings}

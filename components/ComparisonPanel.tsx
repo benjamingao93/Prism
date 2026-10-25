@@ -3,7 +3,7 @@
 import { GitCompareArrows } from "lucide-react";
 import type { Comparison } from "@/lib/comparison";
 import { languageName } from "@/lib/languages";
-import { LanguageBadge } from "./LanguageBadge";
+import { LanguageBadge, paperLanguageProps } from "./LanguageBadge";
 
 export function ComparisonPanel({ comparison, candidateCount }: { comparison: Comparison; candidateCount: number }) {
   const { k, baselineVariant, overlap, additional } = comparison;
@@ -47,7 +47,7 @@ export function ComparisonPanel({ comparison, candidateCount }: { comparison: Co
         <ol className="space-y-1.5">
           {additional.map((p) => (
             <li key={p.id} className="flex items-start gap-2 text-sm">
-              <LanguageBadge code={p.language} className="mt-0.5 shrink-0" />
+              <LanguageBadge {...paperLanguageProps(p)} className="mt-0.5 shrink-0" />
               <a
                 href={`#paper-${encodeURIComponent(p.id)}`}
                 className="min-w-0 font-serif leading-snug hover:text-accent-blue hover:underline"

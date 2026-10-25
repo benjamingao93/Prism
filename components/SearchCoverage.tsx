@@ -72,7 +72,11 @@ export function SearchCoverage({ coverage, candidateCount, variants, refine, onT
           );
         })}
       </ul>
-      <p className="mt-1.5 text-[11px] text-muted-foreground">Click a language to filter the results shown.</p>
+      <p className="mt-1.5 text-[11px] text-muted-foreground">
+        Click a language to filter the results shown.
+        {coverage.correctedLanguages > 0 &&
+          ` ${coverage.correctedLanguages} language tag${coverage.correctedLanguages === 1 ? " was" : "s were"} corrected from the paper's text (dashed badges).`}
+      </p>
 
       <h3 className="mt-4 mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">Query variants</h3>
       <p className="mb-2 text-[11px] leading-snug text-muted-foreground">

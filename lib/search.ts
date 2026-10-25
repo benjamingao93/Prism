@@ -5,6 +5,7 @@ import { UpstreamError } from "./http";
 import { languageName } from "./languages";
 import { orQuery, type OpenAlexSearchParams, type SearchResult } from "./openalex";
 import { OPENALEX_WORKS_BY_LANGUAGE } from "./literature";
+import { applyLanguageOverrides, languageCheckText, needsLanguageCheck, type LanguageCheckFn } from "./language-check";
 import type { ExpansionResult } from "./query-expansion";
 import { availableModes, HYBRID_WEIGHTS, keywordScores, resolveMode, scorePapers, selectTopResults } from "./ranking";
 import type { Capabilities, Paper, QueryLanguage, QueryVariant, SearchRequest, SearchResponse } from "./types";
@@ -17,6 +18,8 @@ export type SearchCrossrefFn = (params: CrossrefSearchParams) => Promise<SearchR
 export interface SearchDeps {
   expand: (query: string, source: QueryLanguage, targets: QueryLanguage[]) => Promise<ExpansionResult>;
   searchOpenAlex: SearchOpenAlexFn;
+  /** Detects the language of flagged papers' text (one LLM call); null to keep source tags. */
+  checkLanguages: LanguageCheckFn | null;
   /** Works per language matching an OR of topic terms (one request); null to skip. */
   countByLanguage: CountByLanguageFn | null;
   searchCrossref: SearchCrossrefFn | null;
@@ -257,8 +260,19 @@ export async function runSearch(req: SearchRequest, deps: SearchDeps): Promise<S
     );
   }
 
-  // 4. Merge, deduplicate, and enforce filters for sources that cannot filter server-side.
-  const merged = filterPapers(mergePapers(lists), {
+  // 4. Merge and deduplicate; correct language tags the text contradicts; then enforce filters
+  // (on the corrected language) for sources that cannot filter server-side.
+  let pool0 = mergePapers(lists);
+  const flagged = deps.checkLanguages ? pool0.filter(needsLanguageCheck) : [];
+  if (flagged.length) {
+    try {
+      const detected = await deps.checkLanguages!(flagged.map((p) => ({ id: p.id, text: languageCheckText(p)! })));
+      pool0 = applyLanguageOverrides(pool0, detected);
+    } catch {
+      notices.push("The language check could not run for this search; languages are shown as tagged by OpenAlex.");
+    }
+  }
+  const merged = filterPapers(pool0, {
     languages: pubLangs,
     yearFrom: req.yearFrom,
     yearTo: req.yearTo,

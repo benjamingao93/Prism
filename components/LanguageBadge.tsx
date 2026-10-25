@@ -1,13 +1,33 @@
-import { Globe2 } from "lucide-react";
-import { languageLabel } from "@/lib/languages";
+import { Globe2, ScanText } from "lucide-react";
+import { languageLabel, languageName } from "@/lib/languages";
 import { cn } from "@/lib/utils";
 
-/** Publication language as reported by source metadata. Never inferred from authors or venue. */
-export function LanguageBadge({ code, className }: { code: string | null; className?: string }) {
+/**
+ * A paper's language. By default this is the source's tag; when the text was checked and found
+ * to be in another language, `correctedFrom` holds the original tag and the badge says so.
+ * Never inferred from authors or venue.
+ */
+export function LanguageBadge({
+  code,
+  correctedFrom,
+  className,
+}: {
+  code: string | null;
+  /** Original source tag when the language was corrected from the text (null if it had none). */
+  correctedFrom?: string | null;
+  className?: string;
+}) {
   const unknown = !code;
+  const corrected = correctedFrom !== undefined;
+  const title = unknown
+    ? "The source did not report a language"
+    : corrected
+      ? `Detected from the paper's text by Gemini. OpenAlex tag: ${correctedFrom ? languageName(correctedFrom) : "none"}.`
+      : "Language as tagged by OpenAlex";
+  const Icon = corrected ? ScanText : Globe2;
   return (
     <span
-      title={unknown ? "The source did not report a publication language" : "Publication language (source metadata)"}
+      title={title}
       className={cn(
         "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-none",
         unknown
@@ -15,11 +35,18 @@ export function LanguageBadge({ code, className }: { code: string | null; classN
           : code === "en"
             ? "border-border bg-secondary text-secondary-foreground"
             : "border-accent-blue/20 bg-accent-blue-soft text-accent-blue",
+        corrected && "border-dashed",
         className,
       )}
     >
-      <Globe2 className="size-3" aria-hidden="true" />
+      <Icon className="size-3" aria-hidden="true" />
       {languageLabel(code)}
+      {corrected && <span className="sr-only"> (detected from text; OpenAlex tag {correctedFrom ? languageName(correctedFrom) : "none"})</span>}
     </span>
   );
+}
+
+/** Props for a paper's badge: passes the original tag only when the language was corrected. */
+export function paperLanguageProps(p: { language: string | null; languageTag: string | null; languageSource: string }) {
+  return { code: p.language, correctedFrom: p.languageSource === "detected" ? p.languageTag : undefined };
 }

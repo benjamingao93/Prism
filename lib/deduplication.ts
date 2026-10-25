@@ -46,7 +46,11 @@ function mergeInto(target: Paper, incoming: Paper): void {
   target.year ??= incoming.year;
   target.venue ??= incoming.venue;
   target.abstract ??= incoming.abstract;
-  target.language ??= incoming.language;
+  if (target.language == null && incoming.language != null) {
+    target.language = incoming.language;
+    target.languageTag = incoming.languageTag;
+    target.languageSource = incoming.languageSource;
+  }
   target.landingUrl ??= incoming.landingUrl;
   target.oaUrl ??= incoming.oaUrl;
   target.isOpenAccess ??= incoming.isOpenAccess;

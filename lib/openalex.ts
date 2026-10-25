@@ -100,6 +100,8 @@ export function normalizeOpenAlexWork(work: OpenAlexWork): Paper | null {
     venue: toPlainText(primary?.source?.display_name),
     abstract: reconstructAbstract(work.abstract_inverted_index),
     language: normalizeLanguage(work.language),
+    languageTag: normalizeLanguage(work.language),
+    languageSource: "metadata",
     landingUrl: safeExternalUrl(primary?.landing_page_url) ?? (doi ? `https://doi.org/${doi}` : null),
     oaUrl,
     isOpenAccess: typeof work.open_access?.is_oa === "boolean" ? work.open_access.is_oa : null,

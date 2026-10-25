@@ -23,7 +23,7 @@ import type { ExplanationKind, PaperSummary, QueryLanguage, QueryVariant, Ranked
 import { doiUrl, safeExternalUrl } from "@/lib/url";
 import { cn } from "@/lib/utils";
 import { useAppState } from "./AppState";
-import { LanguageBadge } from "./LanguageBadge";
+import { LanguageBadge, paperLanguageProps } from "./LanguageBadge";
 
 export interface PaperTranslation {
   title?: string | null;
@@ -166,7 +166,7 @@ export function PaperCard({
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-muted-foreground">
             <span className="tabular w-5 text-right text-muted-foreground/70">{position}.</span>
-            <LanguageBadge code={paper.language} />
+            <LanguageBadge {...paperLanguageProps(paper)} />
             {paper.year != null && <span className="tabular">{paper.year}</span>}
             {paper.isOpenAccess && (
               <span className="rounded border border-success/30 px-1.5 py-0.5 text-[11px] leading-none text-success">Open access</span>
@@ -406,6 +406,12 @@ export function PaperCard({
 
           <section aria-label="Record metadata" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span>Source: {paper.sources.map((s) => (s === "openalex" ? "OpenAlex" : "Crossref")).join(" + ")}</span>
+            {paper.languageSource === "detected" && (
+              <span>
+                Language: {languageName(paper.language)}, detected from the {paper.abstract ? "abstract" : "title"} (OpenAlex tag:{" "}
+                {paper.languageTag ? languageName(paper.languageTag) : "none"})
+              </span>
+            )}
             {paper.type && <span>Type: {paper.type}</span>}
             {paper.citedByCount != null && <span className="tabular">Cited by {paper.citedByCount} (not used in ranking)</span>}
             <span>Text scored: {paper.textUsed === "title+abstract" ? "title + abstract" : paper.textUsed === "title" ? "title only" : "none"}</span>

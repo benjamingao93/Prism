@@ -38,6 +38,7 @@ export default function About() {
       <ul className="mt-3 space-y-2 text-[15px] leading-relaxed text-secondary-foreground">
         <li><strong className="font-medium text-foreground">Real data only.</strong> Every result is a live OpenAlex record. Nothing is demo data, and missing abstracts, DOIs or languages are shown as missing, never filled in.</li>
         <li><strong className="font-medium text-foreground">Originals first.</strong> Machine translations are labeled and shown alongside the original text, never silently in its place.</li>
+        <li><strong className="font-medium text-foreground">Languages you can check.</strong> Language badges come from OpenAlex. When a paper’s text contradicts its tag, Gemini confirms the correction, and the badge turns dashed and names the original tag.</li>
         <li><strong className="font-medium text-foreground">No language penalty.</strong> Publication language, venue prestige, citations and author nationality are not ranking signals.</li>
         <li><strong className="font-medium text-foreground">Honest coverage.</strong> Results are a sample, and “additional papers found” are not claimed to be relevant or to have been missed by any other tool.</li>
         <li><strong className="font-medium text-foreground">Private by default.</strong> Your reading list lives in your browser’s local storage. API keys stay on the server.</li>

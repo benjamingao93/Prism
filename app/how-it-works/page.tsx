@@ -57,8 +57,12 @@ export default function HowItWorks() {
             query looks for Chinese-language papers. Year and publication-language filters are sent to the API. If a query returns fewer than five papers, it is broadened step by step to its two most essential terms, then to the single core term. Ranking then reorders the broader set by relevance.
           </p>
           <p>
-            Responses are cached for 24 hours. Publication language comes from OpenAlex metadata, which is itself detected
-            automatically, and is never inferred from author names or affiliations.
+            Responses are cached for 24 hours. A paper’s language starts as OpenAlex’s tag, which OpenAlex detects automatically
+            and sometimes gets wrong. A local detector flags papers whose abstract (or title) disagrees with their tag, unless the title
+            itself is in the tagged language (many non-English journals add an English abstract), and Gemini reads those texts in
+            one batch. Only when Gemini confirms a different language is the tag overridden. The badge is then
+            dashed, and its tooltip names OpenAlex’s original tag. Language is never inferred from author names, venues or
+            affiliations, and it never affects ranking.
           </p>
         </Step>
 
@@ -157,7 +161,10 @@ export default function HowItWorks() {
         <h2 className="font-serif text-lg font-semibold text-foreground">Known limitations</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>Coverage is limited to what OpenAlex indexes. Many regional journals, theses and non-DOI literature are missing.</li>
-          <li>OpenAlex language tags are machine-detected and sometimes wrong. Some papers tagged Chinese have English-only metadata.</li>
+          <li>
+            Language corrections judge the title and abstract, not the full text. A paper whose title and abstract are both in
+            another language than its tag is relabeled; one with a native-language title keeps its tag.
+          </li>
           <li>Many records lack abstracts. Those are scored on titles alone, which are short and can inflate or deflate similarity.</li>
           <li>Each language contributes at most 100 candidates (OpenAlex’s own top matches), so this is a sample, not an exhaustive search.</li>
           <li>

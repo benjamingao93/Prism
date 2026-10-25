@@ -56,6 +56,8 @@ export interface Coverage {
   viaTranslatedOnly: number;
   viaTranslatedAny: number;
   withAbstract: number;
+  /** Papers whose language tag was corrected from their text. */
+  correctedLanguages: number;
 }
 
 export function computeCoverage(papers: RankedPaper[], variants: QueryVariant[]): Coverage {
@@ -64,7 +66,9 @@ export function computeCoverage(papers: RankedPaper[], variants: QueryVariant[])
   let viaTranslatedOnly = 0;
   let viaTranslatedAny = 0;
   let withAbstract = 0;
+  let correctedLanguages = 0;
   for (const p of papers) {
+    if (p.languageSource === "detected") correctedLanguages++;
     counts.set(p.language, (counts.get(p.language) ?? 0) + 1);
     const t = p.retrievedBy.filter((r) => translatedIds.has(r.variantId)).length;
     if (t > 0) viaTranslatedAny++;
@@ -82,5 +86,6 @@ export function computeCoverage(papers: RankedPaper[], variants: QueryVariant[])
     viaTranslatedOnly,
     viaTranslatedAny,
     withAbstract,
+    correctedLanguages,
   };
 }

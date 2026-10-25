@@ -8,12 +8,14 @@ import { countWorksByLanguage, searchOpenAlex, type OpenAlexSearchParams, type S
 import { expandQuery, ExpansionSchema } from "./query-expansion";
 import type { SearchDeps } from "./search";
 import { TranslationSchema, translateItems } from "./translation";
+import { LANGUAGE_CHECK_SYSTEM, LanguageCheckSchema } from "./language-check";
 import type { Capabilities, TranslateRequest } from "./types";
 
 const DAY = 24 * 60 * 60 * 1000;
 // Cache raw source responses: OpenAlex bills keyword searches per request.
 const sourceCache = globalCache<SearchResult>("source-responses", 1000, DAY);
 const countCache = globalCache<Record<string, number>>("language-counts", 1000, DAY);
+const languageCache = globalCache<string>("language-checks", 20_000, 7 * DAY);
 
 function cached(prefix: string, params: object, run: () => Promise<SearchResult>): Promise<SearchResult> {
   const key = `${prefix}:${JSON.stringify(params)}`;
@@ -61,6 +63,32 @@ export function searchDeps(): SearchDeps {
       cached("openalex", params, () =>
         searchOpenAlex(params, { apiKey: e.OPENALEX_API_KEY, mailto: e.OPENALEX_MAILTO }),
       ),
+    checkLanguages: llmConfigured()
+      ? async (items) => {
+          const result = new Map<string, string>();
+          const pending = items.filter((i) => {
+            const hit = languageCache.get(`${i.id}|${i.text.length}`);
+            if (hit) result.set(i.id, hit);
+            return !hit;
+          });
+          if (pending.length) {
+            const { data } = await structuredCall(LanguageCheckSchema, {
+              models: modelChain(e.LLM_MODEL_FAST),
+              system: LANGUAGE_CHECK_SYSTEM,
+              prompt: JSON.stringify({ items: pending }),
+              maxTokens: 4000,
+              thinking: "low",
+              timeoutMs: 15_000,
+            });
+            for (const item of data.items) {
+              result.set(item.id, item.language);
+              const text = pending.find((p) => p.id === item.id)?.text;
+              if (text) languageCache.set(`${item.id}|${text.length}`, item.language);
+            }
+          }
+          return result;
+        }
+      : null,
     countByLanguage: (params) => {
       const key = `openalex-count:${JSON.stringify(params)}`;
       const hit = countCache.get(key);

@@ -20,6 +20,7 @@ it("live multilingual search", async () => {
     ]}),
     searchOpenAlex: (p) => searchOpenAlex(p, { apiKey: null, mailto: null }),
     countByLanguage: null,
+    checkLanguages: null,
     searchCrossref: null,
     semantic: (texts, papers, field) => semanticScores(texts, papers, { field, waitMs: 120000 }),
     capabilities: () => ({ llm: false, embeddings: "ready", embeddingModel: "x", openalexKey: false, crossref: false }),
